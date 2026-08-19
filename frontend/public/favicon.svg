@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="14" fill="#FF6B00"/>
+  <!-- Gradion Geometric G Contour in Crisp White -->
+  <path d="M46 19H22C17.5817 19 14 22.5817 14 27V37C14 41.4183 17.5817 45 22 45H42C46.4183 45 50 41.4183 50 37V29H32V35H44V37C44 38.1046 43.1046 39 42 39H22C20.8954 39 20 38.1046 20 37V27C20 25.8954 20.8954 25 22 25H46V19Z" fill="#FFFFFF"/>
+</svg>

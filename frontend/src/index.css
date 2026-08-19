@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --grad-orange: #ff6b00;
+  --grad-orange-hover: #e85f00;
+  --grad-orange-light: #ffa861;
+  --grad-orange-pale: #ffc391;
+  --grad-orange-deep: #3a160a;
+
+  --grad-ink: #231f20;
+  --grad-ink-body: #434343;
+  --grad-ink-2: #595959;
+  --grad-ink-3: #919699;
+  --grad-line: #bab7b1;
+  --grad-paper: #f2eee7;
+  --grad-paper-2: #f8f8f8;
+  --grad-white: #ffffff;
+  --grad-black: #1d1c1d;
+
+  --fg-1: var(--grad-ink);
+  --fg-2: var(--grad-ink-2);
+  --fg-3: var(--grad-ink-3);
+  --bg-1: var(--grad-white);
+  --bg-2: var(--grad-paper);
+  --bg-3: var(--grad-paper-2);
+  --bg-accent-soft: #ffeedf;
+
+  --border-1: var(--grad-line);
+  --border-2: #e8e2e0;
+
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Lora', Georgia, serif;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--fg-1);
+  background-color: var(--bg-3);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Utilities from app-demo.html */
+.gd-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.gd-pill.draft {
+  background: #ede9e3;
+  color: var(--grad-ink-2);
+}
+
+.gd-pill.running {
+  background: var(--bg-accent-soft);
+  color: var(--grad-orange-hover);
+}
+
+.gd-pill.done {
+  background: #e6f4ea;
+  color: #137333;
+}
+
+.gd-num-square {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.gd-num-square.done {
+  background: #e6f4ea;
+  color: #137333;
+}
+
+.gd-num-square.current {
+  background: var(--grad-orange);
+  color: #ffffff;
+  box-shadow: 0 0 0 3px var(--grad-orange-pale);
+}
+
+.gd-num-square.pending {
+  background: #ede9e3;
+  color: var(--grad-ink-3);
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.animate-pulse-dot {
+  animation: pulseDot 1.4s ease-in-out infinite;
+}

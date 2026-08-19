@@ -51,14 +51,14 @@ This document logs the major technical decisions, architectural trade-offs, and 
 ### Decision 8: Identity & Multi-Tenancy — Passwordless `x-user-email` Header
 * **Proposal**: Full JWT / OAuth2 / Session cookies vs simple email-based identity.
 * **Alternative Considered**: Heavy OAuth / Auth0 setup.
-* **Decision**: Passwordless identity stored in `data/users.json` with frontend requests sending `x-user-email`. Backend isolates projects and returns `403 Forbidden` if User B accesses User A's project.
+* **Decision**: Passwordless identity stored in `data/users.json` with frontend requests sending `x-user-email`. Returning logins match by email and restore project history.
 * **Trade-Off**: No cryptographic signature verification (suitable for internal/local studio evaluation), but delivers instant multi-tenancy testing.
 
-### Decision 9: Client-Side Routing — Hash-Based Router (`#/`)
-* **Proposal**: Browser HTML5 History API (`/projects/:id`) vs Hash Router (`#/projects/:id`).
-* **Alternative Considered**: `react-router-dom` with HTML5 pushState.
-* **Decision**: Hash-based routing (`#/`, `#/projects`, `#/projects/:id`).
-* **Trade-Off**: URLs contain `#`, but guarantees that deep links and browser refreshes work 100% reliably on local dev servers without requiring backend wildcard rewrites.
+### Decision 9: Client-Side Routing — HTML5 History API (`BrowserRouter` / `pushState`)
+* **Proposal**: Hash Router (`#/projects/:id`) vs HTML5 History API (`/projects/:id`).
+* **Alternative Considered**: Hash-based router (`#/`).
+* **Decision**: HTML5 History API (`window.location.pathname`, `pushState`, `popstate` via `frontend/src/router.tsx`) providing clean URLs (`/login`, `/projects`, `/projects/new`, `/projects/:id`).
+* **Trade-Off**: Clean standard URLs across all browsers; supported out-of-the-box by Vite dev server.
 
 ### Decision 10: In-Progress Feedback & Captions
 * **Proposal**: Generic spinner vs optimistic in-flight locking with live captions.
@@ -91,6 +91,11 @@ During development, the AI assistant proposed approaches that were evaluated, ch
 * **AI Proposal**: Use `imagen-3.0-generate-002` for image generation.
 * **Reason for Rejection**: The assessment rubric and Google Book Illustration cookbook specify the **Nano Banana** multimodal generation family (`gemini-2.5-flash-image`).
 * **Human Override**: Switched visual generation model to **`gemini-2.5-flash-image`**.
+
+### Override 5: Adoption of HTML5 History API Routing
+* **AI Proposal**: Use hash-based client routing (`#/projects/:id`).
+* **Reason for Rejection**: User explicitly preferred standard HTML5 History API URLs (`/projects`, `/projects/:id`) for modern browser semantics without hash fragments.
+* **Human Override**: Implemented **HTML5 History API with `RouterProvider`, `useRouter()`, and `<Link>` components** in `frontend/src/router.tsx`.
 
 ---
 
