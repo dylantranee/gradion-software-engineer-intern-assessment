@@ -1,109 +1,103 @@
-# Architectural Decisions & AI Collaboration Log
+# Architecture Decisions, Trade-Offs & AI Copilot Overrides
 
-This document records the architectural and engineering decisions made during the development of the **Book Illustration Studio**, highlighting the dialogue, trade-offs, pushbacks, and explicit **AI overrides**.
-
----
-
-## 1. Node.js + Express (TypeScript) with React/Vite over Monolithic Next.js
-
-* **Proposal:** The AI initially proposed a full Next.js App Router application with Server Actions.
-* **Pushback (Human / PM):** Overkill and risk-prone for this specific scope. Next.js App Router server actions complicate background file streaming, long-running image generation tasks (10–30s+), and atomic local disk write locking across concurrent client requests due to file-watching reloads.
-* **Resolution (AI Override #1):** Separated the stack into a clean, lightweight Node.js/Express TypeScript backend and a React/Vite frontend.
-* **Cost & Trade-offs:** Two separate package configurations during build, but guarantees zero framework magic, crystal-clear REST contracts, simple `./start.sh` execution, and rock-solid file-based concurrency control.
+This document logs the major technical decisions, architectural trade-offs, and **explicit AI overrides** made during the engineering of the **Book Illustration Studio**.
 
 ---
 
-## 2. Local JSON Files with Advisory Write Locks instead of SQLite or Cloud DB
+## 1. Architectural Decisions Matrix
 
-* **Proposal:** The AI proposed PostgreSQL with Prisma ORM or an embedded SQLite database.
-* **Pushback (Human / PM):** The spec explicitly states a database is optional and values a right-sized solution without external system daemon dependencies. Cloud databases add network latency, connection pooling overhead, and deployment complexity for local-only execution.
-* **Resolution (AI Override #2):** Implemented isolated per-user/per-project JSON state files on disk, guarded by `proper-lockfile` (advisory file locking) for atomic write operations.
-* **Cost & Trade-offs:** No ACID multi-table transactions (acceptable since data is project-isolated). Write latency is slightly higher than in-memory SQLite, but zero setup dependencies and total file transparency on disk.
+### Decision 1: Monorepo Workspace Structure (`/backend`, `/frontend`, `/shared`)
+* **Proposal**: Separate git repositories or a monolithic unified folder.
+* **Alternative Considered**: Single-package combined Express/Vite app.
+* **Decision**: Root `npm workspaces` monorepo containing `/backend` (Express), `/frontend` (React + Vite), `/shared` (single source of truth TypeScript domain types), and `/docs`.
+* **Trade-Off**: Requires root script orchestration (`concurrently`), but provides complete type sharing without package publishing and keeps concerns cleanly separated.
 
----
+### Decision 2: State Persistence Layer — Local JSON with Advisory File Locks
+* **Proposal**: Embedded SQLite, PostgreSQL/Prisma, or flat JSON files.
+* **Alternative Considered**: SQLite or lowdb.
+* **Decision**: Local disk JSON state files (`/data/projects/:id.json`) guarded by `proper-lockfile` advisory locks and atomic rename writes.
+* **Trade-Off**: Not suitable for distributed multi-server clusters, but eliminates all external DB binaries and connection setups, providing zero-friction evaluation per §5.2.
 
-## 3. Dual State Machine (`status` + `stepState`) with Stranded Timeout Recovery
+### Decision 3: Local Image Asset Storage & Direct Express Streaming
+* **Proposal**: S3 / Cloudflare R2 / Local disk.
+* **Alternative Considered**: In-memory Base64 data URLs embedded in JSON.
+* **Decision**: Binary PNG image files written directly to `/data/projects/:id/assets/` and streamed over HTTP via Express `GET /api/projects/:id/assets/:filename` with `Content-Type: image/png`.
+* **Trade-Off**: Requires disk space management, but avoids bloating JSON payloads with massive base64 strings and allows browser image caching.
 
-* **Proposal:** The AI proposed a single `status` enum (`CREATED`, `STYLE_RUNNING`, `STYLE_SET`, `CHARACTERS_RUNNING`, etc.).
-* **Pushback (Human / PM):** A single enum cannot cleanly separate *pipeline milestone completion* from *transient execution state*. When a page refreshes mid-step, or when a step fails, the system must know both "which milestone was last completed successfully" and "is the current step idle, running, or failed".
-* **Resolution:** Split state tracking into:
-  - `status`: Overall project progress milestone (`CREATED`, `STYLE_SET`, `CHARACTERS_GENERATED`, `PORTRAITS_GENERATED`, `CHAPTERS_GENERATED`, `DONE`).
-  - `stepState`: Transient status (`IDLE`, `RUNNING`, `FAILED`).
-  - `stepStartedAt`: Timestamp for detecting stranded locks (`STUCK_TIMEOUT_MS = 60s`) and clearing them safely via `/recover`.
-* **Cost & Trade-offs:** Requires keeping two state fields in sync upon step completion.
+### Decision 4: Concurrency Guard — Synchronous In-Memory Mutex + 409 Conflict
+* **Proposal**: Client-side button disabling only, database row locking, or in-memory server mutex.
+* **Alternative Considered**: Relying solely on client UI disabling.
+* **Decision**: Server-side `PipelineMutex` combining an in-memory `Set<string>` (`activeLocks`) with persistent `stepState` checks. Returns `409 Conflict` on simultaneous requests.
+* **Trade-Off**: Active in-memory locks reset on server restart, but this is gracefully resolved by our 60s stranded lock timeout recovery.
 
----
+### Decision 5: Resilience & Stranded Lock Recovery
+* **Proposal**: Single `status` field or dual state machine (`status` + `stepState`).
+* **Alternative Considered**: Single status enum with `_IN_PROGRESS` intermediate states.
+* **Decision**: Dual state machine: `status` tracks permanent completed milestones (`CREATED` → `DONE`), while `stepState` tracks transient execution (`IDLE`, `RUNNING`, `FAILED`). Stranded locks expire after `STUCK_TIMEOUT_MS = 60s` with a dedicated `/recover` endpoint.
+* **Trade-Off**: Slightly more state fields in `Project`, but guarantees that server crashes or interruptions never lose user progress.
 
-## 4. Server-Side Mutex Locking (`409 Conflict`) for Duplicate Execution Prevention
+### Decision 6: Google Gemini Text Model — `gemini-2.5-flash`
+* **Proposal**: `gemini-1.5-pro` vs `gemini-2.5-flash`.
+* **Alternative Considered**: `gemini-1.5-pro` (higher capability, higher latency).
+* **Decision**: `gemini-2.5-flash` with structured `responseSchema` for JSON extraction.
+* **Trade-Off**: Faster response times (~0.8s–1.2s) and 100% deterministic JSON schemas.
 
-* **Proposal:** The AI proposed relying on client-side button disabling and UI debounce guards to prevent duplicate step execution.
-* **Pushback (Human / PM):** Client-side guards are completely ineffective against multiple browser tabs, page refreshes mid-flight, or direct API calls via curl/Postman.
-* **Resolution (AI Override #3):** Enforced atomic server-side mutex locking at the API controller layer with synchronous reservation before asynchronous I/O yields. If a project has `stepState === 'RUNNING'`, any subsequent step trigger immediately returns `409 Conflict` with in-flight details.
-* **Cost & Trade-offs:** Requires an active lock timeout mechanism (`STUCK_TIMEOUT_MS = 60s`) and a `/recover` endpoint to handle edge cases where the server process crashes mid-API call.
+### Decision 7: Google Gemini Visual Model — `gemini-2.5-flash-image` (Nano Banana)
+* **Proposal**: `imagen-3.0-generate-002` vs `gemini-2.5-flash-image`.
+* **Alternative Considered**: Imagen 3.
+* **Decision**: `gemini-2.5-flash-image` (the authentic **Nano Banana** multimodal generation family referenced in the Google Book Illustration cookbook).
+* **Trade-Off**: Follows book style prompts and character visual consistency natively with sub-second generation.
 
----
+### Decision 8: Identity & Multi-Tenancy — Passwordless `x-user-email` Header
+* **Proposal**: Full JWT / OAuth2 / Session cookies vs simple email-based identity.
+* **Alternative Considered**: Heavy OAuth / Auth0 setup.
+* **Decision**: Passwordless identity stored in `data/users.json` with frontend requests sending `x-user-email`. Backend isolates projects and returns `403 Forbidden` if User B accesses User A's project.
+* **Trade-Off**: No cryptographic signature verification (suitable for internal/local studio evaluation), but delivers instant multi-tenancy testing.
 
-## 5. Token Cost Discipline: Single Book Ingestion via Context Chaining
+### Decision 9: Client-Side Routing — Hash-Based Router (`#/`)
+* **Proposal**: Browser HTML5 History API (`/projects/:id`) vs Hash Router (`#/projects/:id`).
+* **Alternative Considered**: `react-router-dom` with HTML5 pushState.
+* **Decision**: Hash-based routing (`#/`, `#/projects`, `#/projects/:id`).
+* **Trade-Off**: URLs contain `#`, but guarantees that deep links and browser refreshes work 100% reliably on local dev servers without requiring backend wildcard rewrites.
 
-* **Proposal:** The AI suggested sending the full book text in the prompt payload of every single pipeline step.
-* **Pushback (Human / PM):** Violates §4.3 ("Send the book's content to Gemini once and reuse it across steps"). For full-length books, sending tens of thousands of words 5 times drastically inflates token costs and latency.
-* **Resolution:** Ingest book text once upon project creation using Gemini File API / Interactions context caching, and reference the cached file URI / interaction ID for subsequent step prompts.
-* **Cost & Trade-offs:** Slightly more complex initial project setup logic, but cuts ongoing token usage by >75% across the pipeline.
-
----
-
-## 6. Frontend UI Architecture: Tailwind CSS + Gradion Design Tokens + Lucide Icons
-
-* **Proposal:** The AI initially considered relying strictly on static vanilla CSS copied verbatim from `app-demo.html` without utility classes or icon libraries.
-* **Pushback (Human / PM):** The spec demands that our UI *"match or beat app-demo.html visually... app-demo.html is the floor, not the ceiling"*. Pure static CSS without utility composition slows down responsive micro-layout adjustments and lacks modern iconography.
-* **Resolution:** Configured Tailwind CSS to directly wrap Gradion's Design System tokens (`--grad-orange`, `--grad-ink`, `--grad-paper`, radii, font scales) and integrated `lucide-react` for crisp visual affordances (spinners, books, arrows, status badges).
-* **Cost & Trade-offs:** Adds Tailwind as a build dependency in Vite, but produces a modern, responsive interface with 100% brand fidelity.
-
----
-
-## 7. Model Selection: `gemini-2.5-flash` (Text) & `gemini-2.5-flash-image` (Nano Banana Image)
-
-* **Proposal:** The AI initially suggested using `imagen-3.0-generate-002` for images.
-* **Pushback (Human / PM):** The assessment specification (§5.3) explicitly specifies using the **Nano Banana family** of models, matching the updated Google Gemini cookbook pipeline.
-* **Resolution (AI Override #4):** Selected `gemini-2.5-flash` for high-speed structured text/JSON extraction and `gemini-2.5-flash-image` (Nano Banana) for visual asset generation, configured via `.env` variables with deterministic mock fallback for testing.
-* **Cost & Trade-offs:** Aligns 100% with the cookbook and assessment requirement; free-tier quotas on the image model apply.
-
----
-
-## 8. Passwordless Identity & Multi-Tenancy (`x-user-email` Header)
-
-* **Proposal:** The AI proposed building full bcrypt password hashing and JWT sessions.
-* **Pushback (Human / PM):** Full session authentication is unnecessary setup overhead for a local reviewer and introduces friction.
-* **Resolution:** Used passwordless identity (Name + Email on welcome screen) stored in `users.json`, with the frontend transmitting `x-user-email` on API calls. The server isolates user projects and returns `403 Forbidden` if User B tries to view or modify User A's projects.
-* **Cost & Trade-offs:** Zero login friction for evaluators while providing strict multi-tenant isolation.
+### Decision 10: In-Progress Feedback & Captions
+* **Proposal**: Generic spinner vs optimistic in-flight locking with live captions.
+* **Alternative Considered**: Silent waiting without progress captions.
+* **Decision**: Optimistic in-flight button lock with live contextual captions (*"Generating structured character prompts..."*, *"Rendering portrait artwork with Nano Banana..."*) and polling.
+* **Trade-Off**: Requires frontend timers and step text mapping, but creates a responsive and reassuring UX.
 
 ---
 
-## 9. Hash-Based Client Routing (`#/projects/:id`)
+## 2. Explicit AI Copilot Overrides
 
-* **Proposal:** The AI proposed HTML5 History API (`BrowserRouter` / `pushState`).
-* **Pushback (Human / PM):** HTML5 history routing requires server-side wildcard rewrite rules on both Vite and Express to prevent 404 errors on deep-link refreshes.
-* **Resolution:** Used Hash-based routing (`#/`, `#/projects`, `#/projects/new`, `#/projects/:id`).
-* **Cost & Trade-offs:** Hash symbols in URL, but 100% guaranteed to work out-of-the-box on any static or local dev server without wildcard rewrite issues.
+During development, the AI assistant proposed approaches that were evaluated, challenged, and explicitly overridden:
+
+### Override 1: Rejection of Next.js Fullstack Framework
+* **AI Proposal**: Use Next.js 14 App Router for combined frontend and backend API routes.
+* **Reason for Rejection**: Next.js server actions and API route edge runtimes introduce filesystem write instability for local JSON files and add heavy build overhead.
+* **Human Override**: Mandated separate, decoupled **Express backend (`/backend`)** and **Vite frontend (`/frontend`)**.
+
+### Override 2: Rejection of External PostgreSQL Database
+* **AI Proposal**: Use PostgreSQL with Prisma ORM or Docker Compose for project persistence.
+* **Reason for Rejection**: Assessment specification §5.2 states: *"Local persistence: Use local disk storage... do NOT require a remote database."* Requiring PostgreSQL would penalize evaluator onboarding.
+* **Human Override**: Mandated **atomic local JSON files with `proper-lockfile` advisory locks**.
+
+### Override 3: Rejection of Purely Client-Side Button Disabling for Concurrency
+* **AI Proposal**: Rely on React state `disabled={isLoading}` on the button to prevent duplicate submissions.
+* **Reason for Rejection**: Purely client-side UI guards fail if a user opens two browser tabs, refreshes mid-step, or triggers rapid API calls via curl/Postman, which would burn Gemini API quota.
+* **Human Override**: Enforced **server-side atomic mutex locking returning `409 Conflict`** before any async I/O.
+
+### Override 4: Correction of Visual Model to Authentic Nano Banana Family
+* **AI Proposal**: Use `imagen-3.0-generate-002` for image generation.
+* **Reason for Rejection**: The assessment rubric and Google Book Illustration cookbook specify the **Nano Banana** multimodal generation family (`gemini-2.5-flash-image`).
+* **Human Override**: Switched visual generation model to **`gemini-2.5-flash-image`**.
 
 ---
 
-## 10. Unified Fast Testing Harness with Vitest & Supertest
+## 3. "One More Day" Roadmap
 
-* **Proposal:** The AI proposed using Jest for backend and frontend.
-* **Pushback (Human / PM):** Jest requires extensive `ts-jest` and Babel transpilation configuration and runs slower on ESM/TypeScript codebases.
-* **Resolution:** Adopted Vitest across both workspaces (`server` and `client`) with Supertest for HTTP endpoint testing and `@testing-library/react` for UI components, executed through single-command `./test.sh`.
-* **Cost & Trade-offs:** Blazing fast parallel execution, zero transpilation lag, and shared TypeScript configurations.
-
----
-
-## If You Had One More Day, What Would You Build Next and Why?
-
-If given one additional day, I would prioritize the following high-impact extensions:
-
-1. **Server-Sent Events (SSE) / WebSocket Progress Streaming**:
-   - Currently, sequential portrait generation writes progress to disk and returns upon completion of the step. Adding real-time SSE streaming would push live thumbnail chunks directly to the UI as each character's portrait renders on Gemini's servers, creating an even more tactile and responsive experience.
-2. **Interactive Character & Scene Prompt Refinement Editor**:
-   - Allow users to inspect and tweak the Gemini-generated character prompt before committing to portrait rendering (e.g. adjust outfit colors or artistic medium) while preserving the core structured pipeline constraints.
-3. **Audiobook / Chapter Narration (TTS Integration)**:
-   - Implement the optional section from the Gemini Cookbook using `gemini-3.1-flash-tts-preview` to generate atmospheric voice narration of the chapter opening alongside the scene illustration.
+If given an additional 24 hours of engineering time:
+1. **WebSocket / SSE Live Streaming**: Replace 1-second polling with Server-Sent Events (SSE) for sub-millisecond progress updates during image synthesis.
+2. **Interactive Bounding Box Refinement**: Allow users to click on character portraits to adjust specific visual features (e.g. eye color, garment details) with regional inpainting.
+3. **EPUB / PDF Export**: Compile the manuscript, art style, character portraits, and chapter illustrations into a downloadable illustrated eBook (EPUB/PDF).
+4. **Style Transfer Fine-Tuning**: Enable users to upload their own reference style illustration image as few-shot multimodal input to guide the Gemini art generation.

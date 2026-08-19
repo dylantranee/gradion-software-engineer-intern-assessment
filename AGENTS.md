@@ -4,6 +4,7 @@ This repository follows the Gradion Take-Home Assessment specifications for **Bo
 
 ## Context & Planning Documentation
 - Assessment Requirements: [docs/gradion-assessment-intern-software-engineer.md](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/gradion-assessment-intern-software-engineer.md)
+- User Stories & Acceptance Criteria: [docs/user-stories.md](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/user-stories.md)
 - Master Implementation Plan: [docs/plan.md](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/plan.md)
 - Active Tasks & Checklist: [docs/tasks.md](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/tasks.md)
 - System Architecture: [docs/architecture.md](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/architecture.md)

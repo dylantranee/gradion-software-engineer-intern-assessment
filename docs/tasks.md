@@ -1,16 +1,16 @@
 # Project Task Tracker & Checklist
 
 ## Phase 0: Project Setup & Harness
-- [ ] Initialize repository workspace structure (`/server`, `/client`, `/shared`, `/docs`)
-- [ ] Create `.gitignore` to prevent committing `.env`, `node_modules`, build artifacts, and runtime `/data`
-- [ ] Configure `AGENTS.md` and `.env.example` with Gemini model variables
-- [ ] Implement single-command `./start.sh` (environment check + dev server runner)
-- [ ] Implement single-command `./test.sh` (cross-workspace test runner)
-- [ ] Configure Vitest testing harness across backend and frontend workspaces
-- [ ] Establish initial Git baseline commit
+- [x] Initialize repository workspace structure (`/backend`, `/frontend`, `/shared`, `/docs`)
+- [x] Create `.gitignore` to prevent committing `.env`, `node_modules`, build artifacts, and runtime `/data`
+- [x] Configure `AGENTS.md` and `.env.example` with Gemini model variables
+- [x] Implement single-command `./start.sh` (environment check + dev server runner)
+- [x] Implement single-command `./test.sh` (cross-workspace test runner)
+- [x] Configure Vitest testing harness across backend and frontend workspaces
+- [x] Establish initial Git baseline commit
 
 ## Phase 1: Storage Layer & Concurrency Engine
-- [ ] Implement local JSON file storage repository (`server/src/storage/jsonStore.ts`)
+- [ ] Implement local JSON file storage repository (`backend/src/storage/jsonStore.ts`)
 - [ ] Implement advisory file locking (`proper-lockfile`) for atomic disk writes
 - [ ] Implement Dual State Machine (`status` milestone + `stepState: IDLE | RUNNING | FAILED`)
 - [ ] Implement server-side Mutex with synchronous in-memory reservation (`409 Conflict`)
@@ -37,14 +37,14 @@
 ## Phase 4: Frontend UI / UX (Gradion Design System)
 - [ ] Configure Tailwind CSS with Gradion tokens (`--grad-orange`, `--grad-ink`, radii, fonts) and `lucide-react`
 - [ ] Implement Hash Router (`#/`, `#/projects`, `#/projects/new`, `#/projects/:id`)
-- [ ] Build Identity / Auth View (`client/src/pages/AuthPage.tsx`)
-- [ ] Build Project Dashboard with status badges & 5-segment mini progress bar (`client/src/pages/ProjectListPage.tsx`)
-- [ ] Build New Project Ingestion View with `.txt` dropzone + direct text paste area (`client/src/pages/NewProjectPage.tsx`)
-- [ ] Build Project Workspace View with 5-step horizontal Stepper and sidebar (`client/src/pages/ProjectDetailPage.tsx`)
+- [ ] Build Identity / Auth View (`frontend/src/pages/AuthPage.tsx`)
+- [ ] Build Project Dashboard with status badges & 5-segment mini progress bar (`frontend/src/pages/ProjectListPage.tsx`)
+- [ ] Build New Project Ingestion View with `.txt` dropzone + direct text paste area (`frontend/src/pages/NewProjectPage.tsx`)
+- [ ] Build Project Workspace View with 5-step horizontal Stepper and sidebar (`frontend/src/pages/ProjectDetailPage.tsx`)
 - [ ] Build Character Cards (3:4 ratio) & Chapter Cards (16:9 ratio) with sequential visual reveals
-- [ ] Build Book Modal reader (`client/src/components/BookModal.tsx`) with Escape key handling
+- [ ] Build Book Modal reader (`frontend/src/components/BookModal.tsx`) with Escape key handling
 - [ ] Build Loading spinner, In-Progress captions, and Error/Retry alert banners
-- [ ] Frontend component tests (`client/src/__tests__/`) with React Testing Library
+- [ ] Frontend component tests (`frontend/src/__tests__/`) with React Testing Library
 
 ## Phase 5: Verification, Documentation & Final Deliverables
 - [ ] Execute full end-to-end user acceptance walkthrough

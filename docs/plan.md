@@ -31,8 +31,8 @@ To score in the top tier, this project must satisfy three core pillars:
 
 | Layer / Area | Final Selection | Technical Rationale & Exact Mechanics |
 | :--- | :--- | :--- |
-| **Backend Engine** | **Node.js / Express (TypeScript)** | Explicit REST endpoints, robust handling of async Gemini streams, clean separation of concerns, zero framework magic. |
-| **Frontend Framework** | **React + Vite (TypeScript)** | Instant Hot Module Replacement (HMR), clean component lifecycle, fast builds. |
+| **Backend Engine** | **Node.js / Express (TypeScript) (`/backend`)** | Explicit REST endpoints, robust handling of async Gemini streams, clean separation of concerns, zero framework magic. |
+| **Frontend Framework** | **React + Vite (TypeScript) (`/frontend`)** | Instant Hot Module Replacement (HMR), clean component lifecycle, fast builds. |
 | **Design System & Styling** | **Tailwind CSS (Gradion Tokens) + `lucide-react`** | Direct token mapping to `app-demo.html` (`--grad-orange`, `--grad-ink`, `--grad-paper`, border radii, font scales) + modern vector iconography. |
 | **State Persistence** | **Local JSON Files + `proper-lockfile`** | Project-isolated JSON state files (`/data/projects/:id.json`) guarded by advisory write locks for safe concurrent file updates. Zero external DB setup friction (§5.2). |
 | **Asset & Image Storage** | **Local Filesystem (`/data/projects/:id/assets/`)** | Local image storage served directly via Express endpoint `GET /api/projects/:id/assets/:filename` with `image/png` headers. Strictly no S3/blob/CDN (§5.2). |
@@ -43,7 +43,7 @@ To score in the top tier, this project must satisfy three core pillars:
 | **Identity & Multi-Tenancy** | **Passwordless Name + Email (`x-user-email` Header)** | Local user identity stored in `users.json`. Projects isolated by `userId`; User B receives `403 Forbidden` on User A's projects. |
 | **Client-Side Routing** | **Hash-Based Routing (`#/`, `#/projects`, `#/projects/:id`)** | Guaranteed deep-link and refresh stability on local dev servers without requiring server-side wildcard 404 rewrite configuration. |
 | **In-Progress UI Updates** | **Optimistic State + Live Contextual Captions** | Instant button lock, pulse animation, descriptive running captions (e.g. *"Generating structured character prompts..."*), and status polling. |
-| **Testing Harness** | **Vitest + Supertest + React Testing Library** | Unified, fast native TypeScript/ESM test execution across backend (`server`) and frontend (`client`). |
+| **Testing Harness** | **Vitest + Supertest + React Testing Library** | Unified, fast native TypeScript/ESM test execution across backend (`backend`) and frontend (`frontend`). |
 | **Developer CLI Scripts** | **Dedicated Shell Scripts (`./start.sh` & `./test.sh`)** | Single-command developer experience for evaluators per §5.5. |
 | **Git Hygiene & Security** | **Comprehensive `.gitignore` + Granular Commits** | Guarantees `.env` (Gemini API keys), `node_modules`, and runtime `/data` are never committed (§5.3 & §06). |
 
@@ -151,10 +151,10 @@ interface Project {
 
 ## 6. Testing Strategy & Verification Protocols (`docs/TESTING.md`)
 
-- **Backend Automated Tests (`server/tests/`)**:
+- **Backend Automated Tests (`backend/tests/`)**:
   - `pipeline.test.ts`: Validates step sequencing invariant, 5-step happy path, concurrency rejection (`409 Conflict`), and stranded lock recovery.
   - `caps_and_auth.test.ts`: Verifies strict server caps (max 2 characters, max 1 chapter), multi-tenant isolation (`403 Forbidden`), and PNG static image asset streaming headers.
-- **Frontend Automated Tests (`client/src/__tests__/`)**:
+- **Frontend Automated Tests (`frontend/src/__tests__/`)**:
   - `Stepper.test.tsx`: Step labels, active ring-pulse animations, and completed milestone checkmarks.
   - `StatusPill.test.tsx`: Correct rendering across `Draft`, `In progress`, and `Done` states.
   - `BookModal.test.tsx`: Book title, manuscript text, accessibility attributes, and keyboard Escape close handling.
@@ -171,7 +171,7 @@ interface Project {
 | **Test Script** | `./test.sh` | Single command that runs all backend and frontend test suites and exits with code 0. |
 | **Decisions Log** | `docs/DECISIONS.md` | 10 architectural decisions with trade-offs, **4 explicit AI overrides**, and "One More Day" roadmap. Linked in `README.md`. |
 | **Testing Strategy** | `docs/TESTING.md` | Complete testing philosophy + raw output from a real `./test.sh` test run. Linked in `README.md`. |
-| **Environment Config** | `.env.example` | Clear template with `GEMINI_API_KEY`, `GEMINI_TEXT_MODEL=gemini-2.5-flash`, `GEMINI_IMAGE_MODEL=gemini-2.5-flash-image`, `PORT`, `NODE_ENV`. |
+| **Environment Config** | `.env.example` | Clear template with `GEMINI_API_KEY`, `GEMINI_TEXT_MODEL=gemini-2.5-flash`, `GEMINI_IMAGE_MODEL=gemini-2.5-flash-image`, `BACKEND_PORT=3001`, `FRONTEND_PORT=3000`. |
 | **Git Security Config** | `.gitignore` | Ignores `.env`, `node_modules/`, `data/`, `dist/`, build artifacts, and logs. |
 | **AI Context Artifacts** | `AGENTS.md`, `docs/plan.md` | Native Antigravity project context rules, commands, and planning documentation. |
 | **Documentation Index** | `README.md` | Quickstart guide, architecture overview, API endpoint reference, and index of all `/docs` files. |

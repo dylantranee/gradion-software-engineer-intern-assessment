@@ -1,59 +1,80 @@
-# Book Illustration Studio
+# Book Illustration Studio — Gradion Assessment
 
-> Full-stack AI application transforming literary texts into consistent visual art styles, character portraits, and chapter illustrations using the **Google Gemini API**.
+An AI-assisted book illustration studio that transforms literary manuscripts into consistent visual assets using the **Google Gemini API**.
+
+Built with **Node.js/Express (TypeScript)**, **React + Vite (TypeScript)**, and the **Gradion Design System**.
 
 ---
 
-## ⚡ Quickstart
+## Quickstart Guide
 
 ### Prerequisites
-- Node.js (v18+)
-- A Google Gemini API Key (`GEMINI_API_KEY`)
+* **Node.js**: v20+ installed
+* **Google Gemini API Key**: [Get an API Key](https://aistudio.google.com/)
 
+### 1. Single-Command Launch
 ```bash
-# 1. Clone & setup environment
-cp .env.example .env
-# Edit .env and paste your GEMINI_API_KEY
+# Clone the repository
+git clone <repo-url>
+cd gradion-software-engineer-intern-assessment
 
-# 2. Start the full application (Single Command)
+# Start the fullstack application (Backend on 3001, Frontend on 3000)
 ./start.sh
+```
+> `./start.sh` automatically checks your environment, installs workspace dependencies if needed, and starts both Express and Vite development servers concurrently.
 
-# 3. Run all automated tests (Single Command)
+### 2. Configure Environment
+Copy `.env.example` to `.env` in the root directory:
+```bash
+cp .env.example .env
+```
+Edit `.env` to supply your `GEMINI_API_KEY`:
+```ini
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_TEXT_MODEL=gemini-2.5-flash
+GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
+BACKEND_PORT=3001
+FRONTEND_PORT=3000
+STORAGE_DIR=./data
+```
+
+### 3. Single-Command Automated Tests
+```bash
+# Run all backend and frontend test suites
 ./test.sh
 ```
 
 ---
 
-## 📚 Project Documentation Index (`/docs`)
+## Complete Project Documentation (`/docs`)
 
-All design notes, test strategies, and architectural decisions are organized in [`/docs`](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/):
+All planning documents, decisions, user stories, and test logs are located in `/docs`:
 
-1. **[Architectural Decisions & AI Overrides (`docs/DECISIONS.md`)](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/DECISIONS.md)**: 
-   - 10 key architectural decisions with trade-offs.
-   - **4 explicit AI overrides** where AI suggestions were rejected for being incorrect, unsafe, or misaligned with spec constraints.
-   - "If you had one more day" roadmap vision.
-2. **[Testing Strategy & Live Test Reports (`docs/TESTING.md`)](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/TESTING.md)**:
-   - Backend invariant & concurrency testing philosophy.
-   - Frontend state testing philosophy.
-   - Real, untruncated output from `./test.sh`.
-3. **[Master Implementation Plan (`docs/plan.md`)](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/plan.md)**:
-   - Comprehensive PRD, 5-step pipeline specs, and resilience model.
-4. **[System Architecture (`docs/architecture.md`)](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/architecture.md)**:
-   - API endpoints, data models, state machine, and component diagrams.
-5. **[Active Task Tracker (`docs/tasks.md`)](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/tasks.md)**:
-   - Development checklist across all phases.
-6. **[Walkthrough & Verification Journal (`docs/walkthrough.md`)](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/walkthrough.md)**:
-   - Milestone progress, manual verification flows, and UI demonstrations.
-7. **[Assessment Specification (`docs/gradion-assessment-intern-software-engineer.md`)](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/gradion-assessment-intern-software-engineer.md)**:
-   - Original assignment brief.
+1. **[User Stories & Acceptance Criteria](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/user-stories.md)** (`docs/user-stories.md`)
+   * Comprehensive Agile backlog across all phases with formal Given-When-Then Gherkin acceptance criteria (`US-0.1` to `US-5.1`).
+2. **[Architecture Decisions & AI Copilot Overrides](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/DECISIONS.md)** (`docs/DECISIONS.md`)
+   * 10 architectural decisions with trade-offs, **4 explicit AI overrides** (Next.js rejection, Postgres rejection, Client-side locking rejection, Imagen 3 correction to Nano Banana), and "One More Day" roadmap.
+3. **[Master Implementation Plan & PRD](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/plan.md)** (`docs/plan.md`)
+   * 14-row architectural decision matrix, 5-step pipeline mechanics, negative prompt rules, and state machine specifications.
+4. **[System Architecture](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/architecture.md)** (`docs/architecture.md`)
+   * Architecture diagram, REST endpoint specifications, and TypeScript data models.
+5. **[Task Tracker & Checklist](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/tasks.md)** (`docs/tasks.md`)
+   * Phase-by-phase implementation checklist.
+6. **[Testing Strategy & Execution Outputs](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/TESTING.md)** (`docs/TESTING.md`)
+   * Testing philosophy, ordering invariants, caps enforcement, and raw test outputs.
+7. **[Walkthrough & Verification Journal](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/walkthrough.md)** (`docs/walkthrough.md`)
+   * Incremental verification logs across development milestones.
+8. **[Native Agent Guidelines](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/AGENTS.md)** (`AGENTS.md`)
+   * Antigravity operational rules, caps constraints, and logging protocols.
 
 ---
 
-## 🛠️ Tech Stack & Key Decisions
+## Tech Stack Summary
 
-- **Frontend**: React + Vite (TypeScript) + Tailwind CSS with Gradion Design Tokens (`--grad-orange`, `--grad-ink`) + `lucide-react` icons.
-- **Backend**: Node.js + Express (TypeScript) with REST endpoints.
-- **Storage**: Local JSON persistence with advisory file locking (`proper-lockfile`) for atomic concurrency control without external database daemons.
-- **Asset Storage**: Local filesystem (`/data/projects/:id/assets/`) streamed directly via Express `GET /api/projects/:id/assets/:filename`.
-- **AI Integration**: Official `@google/genai` SDK using `gemini-2.5-flash` for structured JSON extraction and `gemini-2.5-flash-image` (**Nano Banana** family) for visual generation.
-- **Resilience Engine**: Dual state machine (`status` + `stepState`), server-side mutex lock (`409 Conflict`), and stranded lock recovery (`STUCK_TIMEOUT_MS = 60s`).
+* **Backend**: Node.js, Express, TypeScript, `@google/genai`, `proper-lockfile`, `uuid`, `cors`, `dotenv`
+* **Frontend**: React 18, Vite, TypeScript, Tailwind CSS (Gradion Design Tokens), `lucide-react`
+* **AI Models**:
+  * **Text & Structure**: `gemini-2.5-flash` with structured `responseSchema`
+  * **Multimodal Generation**: `gemini-2.5-flash-image` (Nano Banana family)
+* **Testing**: Vitest, Supertest, React Testing Library, jsdom
+* **Monorepo**: Root `npm workspaces` (`/backend`, `/frontend`, `/shared`)
