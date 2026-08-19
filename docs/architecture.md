@@ -138,7 +138,44 @@ flowchart TD
 
 ---
 
-## 4. Data Schema Definitions
+## 4. Projects Dashboard Business Rules (`BRD-PROJ-LIST-01`)
+
+### 4.1 Scope & Multi-Tenant Security Boundary
+The `/projects` route serves as the tenant-isolated book library and studio dashboard:
+* **Tenant Isolation:** All requests transmit the `x-user-email` header. The server returns strictly `{ projects: ProjectSummary[] }` where `project.userId === currentUser.id`.
+* **Unauthorized Access:** If the session is unauthenticated or `GET /api/projects` returns `401`, the client immediately clears session state and redirects to `/login`.
+* **Data Freshness:** Mounting the view triggers a fresh `GET /api/projects` fetch, ensuring pipeline updates (new characters, chapters, illustrations) are immediately reflected upon navigation.
+
+### 4.2 State-Driven View Transitions & Display Rules
+
+| State | Trigger Condition | Display Behavior | CTA Behavior |
+| :--- | :--- | :--- | :--- |
+| **Loading** | Initial mount / API in-flight | Centered spinner with `"Loading your library..."` on a clean card canvas, eliminating visual layout flicker. | Disabled / Hidden |
+| **Error State** | `GET /api/projects` fails (5xx / network) | Inline error banner (`bg-red-50 border-red-200`) with `<AlertCircle />`. | Retry on refresh |
+| **Empty State** | `projects.length === 0` | Full-width studio canvas (`w-full border-2 border-dashed`), `<BookPlus />` icon, text: *"Upload a book file or paste text to start generating artwork."* | Single center **`+ New project`** CTA (Header CTA hidden). |
+| **Active Grid** | `projects.length > 0` | Responsive grid sorted by `updatedAt` descending (`b.updatedAt - a.updatedAt`). | Top-right **`+ New project`** CTA enabled. |
+
+### 4.3 Responsive Viewport & Grid Contract
+* **Desktop ($\ge 1024\text{px}$):** 3 columns (`lg:grid-cols-3 gap-6`).
+* **Tablet ($768\text{px} - 1023\text{px}$):** 2 columns (`md:grid-cols-2 gap-6`).
+* **Mobile ($< 768\text{px}$):** 1 column (`grid-cols-1 gap-4`).
+
+### 4.4 Project Card Component Contract
+Every card in the active grid renders:
+1. **Title:** Multi-line clamped (`line-clamp-2 min-h-[3.25rem]`), bold, with hover color transition to Gradion Orange and native browser `title` tooltip on hover.
+2. **Status Pill (`StatusPill`):** Standardized 3-state indicator (`Draft` \| `In progress` \| `Done` \| `Error`):
+   - **`Draft`**: Rendered when `status === 'CREATED'`.
+   - **`In progress`**: Rendered across steps 1–4. Displays an **animated pulsing dot** (`animate-pulse-dot`) during active API execution (`stepState === 'RUNNING'`), and a **static solid dot** when idle between steps.
+   - **`Done`**: Rendered with an emerald checkmark when `status === 'DONE'`.
+   - **`Error`**: Rendered in soft red when `stepState === 'FAILED'`.
+   - Guarded with `whitespace-nowrap flex-shrink-0` to guarantee single-line badge rendering.
+3. **5-Step Visual Progress Bar (`ProgressBar`):** Discrete 5-segment indicator representing progress across the 5 steps without redundant text labels.
+4. **Contextual Metadata Footer:** Formatted update date (`MMM D, YYYY`), conditionally displaying character count (`X characters`) and chapter count (`X chapters`) only when $> 0$ (avoiding zero-count clutter).
+5. **Navigation:** Single-click transitions the router to `/projects/:id` without full page reload.
+
+---
+
+## 5. Data Schema Definitions
 
 ```typescript
 export interface User {
