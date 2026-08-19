@@ -6,20 +6,27 @@ export const authRouter = Router();
 
 /**
  * POST /api/auth/login
- * Passwordless login/registration via name and email.
+ * Passwordless login/registration via required name and email.
  */
 authRouter.post('/login', async (req: Request, res: Response): Promise<void> => {
   const { name, email } = req.body || {};
 
+  if (!name || typeof name !== 'string' || name.trim().length === 0) {
+    res.status(400).json({
+      error: 'Full name is required.',
+    });
+    return;
+  }
+
   if (!email || typeof email !== 'string' || email.trim().length === 0 || !email.includes('@')) {
     res.status(400).json({
-      error: 'Invalid email address provided.',
+      error: 'A valid email address is required.',
     });
     return;
   }
 
   try {
-    const user = await jsonStore.getOrCreateUser(name || email.split('@')[0], email);
+    const user = await jsonStore.getOrCreateUser(name.trim(), email.trim().toLowerCase());
     res.status(200).json({ user });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

@@ -10,7 +10,7 @@ The **Book Illustration Studio** is structured as a decoupled client-server arch
 |  - Tailwind CSS + Gradion Design Tokens                     |
 |  - Lucide Icons & Responsive Views                          |
 |  - Stepper & Sequential Art Reveal Components               |
-|  - Hash-Based Router (#/, #/projects, #/projects/:id)       |
+|  - HTML5 History API Router (/login, /projects, /projects/:id) |
 |  - Live Status Polling & In-Progress Captions               |
 +------------------------------+------------------------------+
                                | REST API
@@ -37,6 +37,7 @@ The **Book Illustration Studio** is structured as a decoupled client-server arch
 ### Identity Endpoints
 - `POST /api/auth/login`
   - Body: `{ name: string, email: string }`
+  - Validation: Both `name` and `email` are strictly required (non-empty strings). Returns `400 Bad Request` on missing/invalid input.
   - Response: `{ user: { id: string, name: string, email: string, createdAt: number } }`
 - `GET /api/auth/me`
   - Headers: `x-user-email: string`
@@ -45,14 +46,14 @@ The **Book Illustration Studio** is structured as a decoupled client-server arch
 ### Project Endpoints
 - `GET /api/projects`
   - Headers: `x-user-email: string`
-  - Response: `ProjectSummary[]`
+  - Response: `ProjectSummary[]` (strictly filtered by `userId`)
 - `POST /api/projects`
   - Headers: `x-user-email: string`
   - Body: `{ title: string, bookText: string }`
   - Response: `Project`
 - `GET /api/projects/:id`
   - Headers: `x-user-email: string`
-  - Response: `Project`
+  - Response: `Project` (returns `403 Forbidden` if project belongs to another user)
 
 ### Pipeline & Recovery Endpoints
 - `POST /api/projects/:id/step/:stepKey`
@@ -73,7 +74,71 @@ The **Book Illustration Studio** is structured as a decoupled client-server arch
 
 ---
 
-## 3. Data Schema Definitions
+## 3. Business Rules & Authentication Specification (`BRD-AUTH-01`)
+
+### 3.1 Scope & Objective
+The `/login` gateway provides frictionless, passwordless identity verification (§5.2) to establish multi-tenant data boundaries across user projects without requiring third-party authentication infrastructure.
+
+### 3.2 Field-Level Input Validation Matrix
+
+| Field | Mandatory? | Validation Rule | Client-Side Error Response | Server-Side Error Response (`POST /api/auth/login`) |
+| :--- | :--- | :--- | :--- | :--- |
+| **`Full name`** | **Yes** | Non-empty string after trimming whitespace (`length > 0`). | Inline error under input: *"Please enter your full name."* + Red outline. | `400 Bad Request`<br>`{ "error": "Full name is required." }` |
+| **`Email address`** | **Yes** | Must match RFC-5322 regex: `^[^\s@]+@[^\s@]+\.[^\s@]+$` | Inline error under input: *"Please enter a valid email address."* + Red outline. | `400 Bad Request`<br>`{ "error": "A valid email address is required." }` |
+
+### 3.3 Account Provisioning & Identity Lifecycle
+
+```mermaid
+flowchart TD
+    Submit["User submits Name + Email"] --> Val{Valid Inputs?}
+    Val -- No --> Err["Display Inline Field Error"]
+    Val -- Yes --> Norm["Normalize Email (trim + toLowerCase)"]
+    Norm --> Check{Email in data/users.json?}
+    Check -- No --> Create["Create New User Entity (usr_uuid)<br/>Initialize Empty Projects List"]
+    Check -- Yes --> Restore["Retrieve Existing User Profile<br/>Preserve Registered Name & Link Projects"]
+    Create --> Persist["Save in localStorage (gradion_user_*)"]
+    Restore --> Persist
+    Persist --> Nav["Navigate Router to /projects"]
+```
+
+1. **Email Normalization:** All emails are trimmed and converted to lowercase before storage and lookup to prevent duplicate casing accounts (`ALICE@EXAMPLE.COM` → `alice@example.com`).
+2. **First-Time User Registration:**
+   * Generates a unique user ID: `usr_<uuid8>` (e.g. `usr_f19a3c19`).
+   * Records creation timestamp `createdAt: Date.now()`.
+   * Atomically appends entity to `/data/users.json`.
+3. **Returning User Login (Project Resumption):**
+   * Locates the existing profile by normalized email.
+   * Preserves the durable registered account name.
+   * Instantly grants access to all previously generated books, styles, character portraits, and chapter illustrations.
+
+### 3.4 Multi-Tenant Boundary & Security Rules
+1. **Project Ownership Tagging:** Every project entity is permanently stamped with the creator's `userId`.
+2. **Access Control Enforcement:**
+   * All API requests must send the `x-user-email: <email>` header.
+   * If `x-user-email` is missing: Backend returns **`401 Unauthorized`**.
+   * If User B attempts to view or run a pipeline step on User A's project ID: Backend returns **`403 Forbidden`**.
+
+### 3.5 Session Lifecycle & Navigation State Machine
+
+| Event / Route State | Trigger Condition | System Action | Target View |
+| :--- | :--- | :--- | :--- |
+| **Unauthenticated Access** | User visits `/projects`, `/projects/new`, or `/projects/:id` without stored user. | Route guard intercepts navigation. | Redirects to `/login`. |
+| **Already Authenticated** | User visits `/login` while valid session exists in `localStorage`. | Route guard recognizes active session. | Redirects to `/projects`. |
+| **Page Refresh (F5)** | User reloads page during project editing. | `AuthContext` reads `gradion_user_*` and verifies session via `GET /api/auth/me`. | Preserves active workspace route (`/projects/:id`). |
+| **Explicit Sign Out** | User clicks "Sign Out" in Navbar. | Clears `gradion_user_*` from `localStorage`, resets `AuthContext`. | Redirects to `/login`. |
+
+### 3.6 Persistent Storage Hierarchy (`/data`)
+* **Unified Root `/data` Directory:**
+  - All runtime project state, assets, and users are stored at the top-level repository root (`/data`).
+  - `/data/users.json`: Registered user accounts.
+  - `/data/projects/:id.json`: Individual project entity documents.
+  - `/data/assets/:filename`: Binary PNG image files.
+* **Concurrency & Safety:**
+  - All JSON file updates are guarded by `proper-lockfile` advisory write locks and atomic `.tmp` rename swaps to prevent corruption.
+
+---
+
+## 4. Data Schema Definitions
 
 ```typescript
 export interface User {

@@ -38,7 +38,16 @@ describe('US-3.1 - US-3.7: REST API Server & Multi-Tenant Endpoints', () => {
         .send({ name: 'Invalid User', email: 'notanemail' });
 
       expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/invalid email/i);
+      expect(res.body.error).toMatch(/valid email/i);
+    });
+
+    it('POST /api/auth/login rejects missing or empty names with 400 Bad Request', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ name: '   ', email: 'valid@example.com' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/full name is required/i);
     });
 
     it('GET /api/auth/me returns current user profile when x-user-email is provided', async () => {

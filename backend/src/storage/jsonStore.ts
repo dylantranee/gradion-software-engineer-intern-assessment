@@ -19,7 +19,14 @@ export class JsonStore {
   private usersFile: string;
 
   constructor(baseDir?: string) {
-    this.baseDir = path.resolve(baseDir || process.env.STORAGE_DIR || './data');
+    if (baseDir) {
+      this.baseDir = path.resolve(baseDir);
+    } else if (process.env.STORAGE_DIR) {
+      this.baseDir = path.resolve(process.env.STORAGE_DIR);
+    } else {
+      const isBackendSubdir = path.basename(process.cwd()) === 'backend';
+      this.baseDir = path.resolve(isBackendSubdir ? path.join(process.cwd(), '..', 'data') : path.join(process.cwd(), 'data'));
+    }
     this.projectsDir = path.join(this.baseDir, 'projects');
     this.assetsDir = path.join(this.baseDir, 'assets');
     this.usersFile = path.join(this.baseDir, 'users.json');
@@ -58,21 +65,21 @@ export class JsonStore {
       release = await lockfile.lock(filePath, {
         retries: {
           retries: 10,
-          minTimeout: 50,
-          maxTimeout: 500,
+          factor: 1.5,
+          minTimeout: 20,
+          maxTimeout: 200,
         },
-        stale: 10_000,
       });
 
-      const tmpFile = `${filePath}.${uuidv4()}.tmp`;
-      fs.writeFileSync(tmpFile, JSON.stringify(data, null, 2), 'utf-8');
-      fs.renameSync(tmpFile, filePath);
+      const tempPath = `${filePath}.tmp.${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf-8');
+      fs.renameSync(tempPath, filePath);
     } finally {
       if (release) {
         try {
           await release();
         } catch {
-          // Lock release cleanup safeguard
+          // Lock might have already been released
         }
       }
     }
