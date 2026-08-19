@@ -14,9 +14,12 @@ This document records the user stories, personas, and formal BDD/Gherkin accepta
 | **US-0.4** | Phase 0 | Unified Test Runner Script (`./test.sh`) | Evaluator / Developer | `P0 (Blocker)` |
 | **US-0.5** | Phase 0 | Fast Native TypeScript Testing Harness (Vitest) | QA / Developer | `P0 (Blocker)` |
 | **US-0.6** | Phase 0 | AI Copilot Rules & Architectural Governance (`AGENTS.md`) | Engineering Lead | `P1 (High)` |
-| **US-1.1** | Phase 1 | Atomic JSON Storage with Advisory File Locks | Fullstack Developer | `P0 (Blocker)` |
-| **US-1.2** | Phase 1 | Server-Side Concurrency Mutex (`409 Conflict`) | Studio User | `P0 (Blocker)` |
-| **US-1.3** | Phase 1 | Dual State Machine & Stranded Lock Recovery | Studio User | `P0 (Blocker)` |
+| **US-1.1** | Phase 1 | Local JSON Storage Repository for Projects & Users | Fullstack Developer | `P0 (Blocker)` |
+| **US-1.2** | Phase 1 | Atomic File Writes via Advisory Locks (`proper-lockfile`) | Backend Engineer | `P0 (Blocker)` |
+| **US-1.3** | Phase 1 | Dual State Machine Architecture (`status` + `stepState`) | Studio User | `P0 (Blocker)` |
+| **US-1.4** | Phase 1 | Server-Side Concurrency Mutex (`409 Conflict`) | Studio User / Cost | `P0 (Blocker)` |
+| **US-1.5** | Phase 1 | Stranded Lock Timeout & Safe State Recovery (`/recover`) | Studio User | `P0 (Blocker)` |
+| **US-1.6** | Phase 1 | Automated Storage & Concurrency Test Suite | QA Engineer | `P0 (Blocker)` |
 | **US-2.1** | Phase 2 | Gemini Text & Structured JSON Extraction (`gemini-2.5-flash`) | Studio User | `P0 (Blocker)` |
 | **US-2.2** | Phase 2 | Gemini Multimodal Image Generation (`gemini-2.5-flash-image`) | Studio User | `P0 (Blocker)` |
 | **US-2.3** | Phase 2 | Hard Server-Side Entity Caps (Max 2 Adults, Max 1 Chapter) | System Architect | `P0 (Blocker)` |
@@ -157,55 +160,149 @@ Scenario: AI copilot reading workspace context rules
 
 ## Phase 1: Storage Layer & Concurrency Engine
 
-### `US-1.1: Atomic JSON Storage with Advisory File Locks`
+### `US-1.1: Local JSON Storage Repository for Projects & Users`
 * **As a** Fullstack Developer,  
-* **I want** project state persisted in JSON files (`/data/projects/:id.json`) guarded by `proper-lockfile` and temporary file renaming,  
-* **So that** state updates are completely thread-safe against concurrent filesystem writes without requiring heavy database server infrastructure.
+* **I want** a local disk storage repository (`backend/src/storage/jsonStore.ts`) that persists user identities (`data/users.json`) and individual project files (`data/projects/:id.json`),  
+* **So that** all project state and user data are persisted across server restarts without requiring any external database installations (§5.2).
 
 #### Acceptance Criteria (Gherkin)
 
 ```gherkin
-Scenario: Safe atomic disk write with advisory lock
-  Given an existing project state file "data/projects/proj_123.json"
-  When two asynchronous routines attempt to write to "proj_123.json" concurrently
-  Then each write must acquire an advisory lock via "proper-lockfile"
-  And writes must occur via a ".tmp" file atomic rename
-  And the final file contents must remain uncorrupted valid JSON.
+Scenario: Initializing storage directory structure automatically
+  Given no "data" directory exists on disk
+  When the "JsonStore" initializes
+  Then it must automatically create "data/projects" and "data/assets" directories if missing
+  And "data/users.json" must be initialized with an empty array if not present.
+
+Scenario: Creating and retrieving a user
+  Given a new user with email "alice@example.com" and name "Alice"
+  When "jsonStore.getOrCreateUser('Alice', 'alice@example.com')" is invoked
+  Then the user entity must be saved with a unique "id" and "createdAt" timestamp
+  And a subsequent lookup with "alice@example.com" must return the identical user record.
+
+Scenario: Creating, updating, and listing projects
+  Given an authenticated user with ID "usr_1"
+  When "jsonStore.createProject(usr_1, 'Wind in the Willows', 'Full book text...')" is invoked
+  Then a new project file "data/projects/:id.json" must be written with status "CREATED" and stepState "IDLE"
+  And "jsonStore.listProjects(usr_1)" must return project summaries filtered strictly to "usr_1".
 ```
 
 ---
 
-### `US-1.2: Server-Side Concurrency Mutex (409 Conflict)`
-* **As a** Studio User,  
-* **I want** duplicate step execution requests blocked at the server level,  
-* **So that** double-clicking an action button, triggering rapid API calls, or having the app open in two browser tabs never initiates duplicate Gemini requests or inflates API costs.
+### `US-1.2: Atomic File Writes via Advisory Locks (proper-lockfile)`
+* **As a** Backend Engineer,  
+* **I want** all filesystem writes to JSON files guarded by `proper-lockfile` advisory locks and atomic `.tmp` file renaming,  
+* **So that** simultaneous read/write operations or server interruptions never result in corrupted, half-written, or invalid JSON files.
 
 #### Acceptance Criteria (Gherkin)
 
 ```gherkin
-Scenario: Rejecting simultaneous step trigger on the same project
-  Given Project "proj_123" is currently executing Step 2 ("stepState" is "RUNNING")
-  When a second request arrives at "POST /api/projects/proj_123/step/CHARACTERS"
+Scenario: Thread-safe concurrent writes to project file
+  Given an existing project state file "data/projects/proj_100.json"
+  When two concurrent routines simultaneously call "jsonStore.updateProject('proj_100', mutatorFn)"
+  Then both mutators must execute sequentially under "proper-lockfile" advisory lock
+  And writes must be staged to a temporary file "data/projects/proj_100.json.tmp" before renaming
+  And the final file contents must parse successfully as valid JSON without race conditions.
+
+Scenario: Handling lock release on write completion or error
+  Given a write operation acquiring a lock on "data/projects/proj_100.json"
+  When the write finishes or encounters an error
+  Then the advisory lock must always be released in a "finally" block
+  And subsequent write operations must not remain blocked.
+```
+
+---
+
+### `US-1.3: Dual State Machine Architecture (status + stepState)`
+* **As a** Studio User,  
+* **I want** the project state to decouple permanent completed pipeline milestones (`status`) from transient in-flight execution states (`stepState`),  
+* **So that** if an AI step fails or the network disconnects, my already completed steps remain completely intact and my project can easily retry from where it stopped.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Milestone progression on successful step completion
+  Given a project at status "CREATED" and stepState "IDLE"
+  When Step 1 (Style) begins execution
+  Then "stepState" must transition to "RUNNING", "currentRunningStep" must be "STYLE", and "stepStartedAt" must record the current timestamp.
+  When Step 1 finishes successfully
+  Then "status" must advance to "STYLE_SET", "stepState" must return to "IDLE", and "currentRunningStep" must be cleared.
+
+Scenario: Preserving milestones on step failure
+  Given a project at status "STYLE_SET" with "stepState" "RUNNING" for Step 2 (Characters)
+  When Step 2 encounters an unrecoverable API error
+  Then "stepState" must transition to "FAILED"
+  And "lastError" must record "{ step: 'CHARACTERS', message: errorDetails, timestamp: now }"
+  And "status" must remain "STYLE_SET" so prior style progress is preserved.
+```
+
+---
+
+### `US-1.4: Server-Side Concurrency Mutex (409 Conflict)`
+* **As a** Studio User / Budget Guardian,  
+* **I want** the backend server to enforce an atomic synchronous in-memory mutex (`PipelineMutex`),  
+* **So that** double-clicking a button, sending rapid concurrent requests, or opening the app across two browser tabs cannot trigger simultaneous Gemini API calls or inflate API costs.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Rejecting simultaneous step execution on the same project
+  Given Project "proj_100" is executing Step 2 (Characters) with "stepState = RUNNING"
+  When a second request arrives at "POST /api/projects/proj_100/step/CHARACTERS"
   Then the server must immediately return HTTP status 409 Conflict
-  And the response body must indicate that a step is already in progress
-  And no secondary Gemini API call must be initiated.
+  And the JSON response body must contain "{ error: 'Pipeline step is already running on this project' }"
+  And no duplicate Gemini AI call must be initiated.
+
+Scenario: Synchronous in-memory reservation before async I/O
+  Given two concurrent HTTP requests arrive simultaneously for Project "proj_100"
+  When the router receives the requests
+  Then "activeLocks.add(projectId)" must be evaluated synchronously before any "await" or async disk lookup
+  And exactly one request must acquire the lock while the other receives 409 Conflict immediately.
 ```
 
 ---
 
-### `US-1.3: Dual State Machine & Stranded Lock Recovery`
+### `US-1.5: Stranded Lock Timeout & Safe State Recovery (/recover)`
 * **As a** Studio User,  
-* **I want** transient step execution (`stepState: IDLE | RUNNING | FAILED`) decoupled from permanent milestones (`status`),  
-* **So that** if a step is interrupted by a browser refresh or server restart, my completed milestones remain safe and I can easily recover the project lock.
+* **I want** the system to detect when a step has been running longer than 60 seconds (`STUCK_TIMEOUT_MS`) and provide a recovery mechanism (`POST /api/projects/:id/recover`),  
+* **So that** if my server restarts or the browser crashes mid-step, my project lock is safely unlocked without corrupting my project history.
 
 #### Acceptance Criteria (Gherkin)
 
 ```gherkin
-Scenario: Recovering a stranded lock after timeout
-  Given Project "proj_123" has been in "RUNNING" state for longer than 60,000ms ("STUCK_TIMEOUT_MS")
-  When the client calls "POST /api/projects/proj_123/recover"
-  Then the server must release the lock and set "stepState" to "IDLE"
-  And all previously completed milestones in "status" must be preserved intact.
+Scenario: Automatic timeout detection for stranded locks
+  Given Project "proj_100" has "stepState = RUNNING" and "stepStartedAt" was 65 seconds ago (> 60,000ms)
+  When the user queries "GET /api/projects/proj_100" or attempts to recover
+  Then the system must identify the project as stranded
+  And the client must be permitted to invoke recovery.
+
+Scenario: Successful stranded lock recovery
+  Given Project "proj_100" in a stranded running state with prior completed status "CHARACTERS_GENERATED"
+  When the client sends "POST /api/projects/proj_100/recover"
+  Then the server must release "activeLocks", reset "stepState" to "IDLE", and clear "currentRunningStep"
+  And "status" must remain "CHARACTERS_GENERATED"
+  And the project must be immediately eligible to execute Step 3 (Portraits).
+```
+
+---
+
+### `US-1.6: Automated Storage & Concurrency Test Suite`
+* **As a** QA Engineer,  
+* **I want** comprehensive automated unit and integration tests covering `JsonStore`, atomic locks, ordering invariants, strict caps, and concurrency rejection,  
+* **So that** backend correctness is provable and reproducible via `./test.sh`.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Storage repository unit test execution
+  Given the Vitest test runner
+  When executing "backend/tests/storage.test.ts"
+  Then all test cases for user creation, project CRUD, atomic disk writes, and concurrent update race conditions must pass.
+
+Scenario: Mutex and state machine integration test execution
+  Given the Vitest test runner and in-memory Supertest server
+  When executing "backend/tests/mutex_and_state.test.ts"
+  Then tests verifying 409 Conflict rejection, state transitions, stranded lock timeouts, and /recover endpoint must pass with 0 failures.
 ```
 
 ---

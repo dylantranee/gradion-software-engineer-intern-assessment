@@ -10,12 +10,12 @@
 - [x] Establish initial Git baseline commit
 
 ## Phase 1: Storage Layer & Concurrency Engine
-- [ ] Implement local JSON file storage repository (`backend/src/storage/jsonStore.ts`)
-- [ ] Implement advisory file locking (`proper-lockfile`) for atomic disk writes
-- [ ] Implement Dual State Machine (`status` milestone + `stepState: IDLE | RUNNING | FAILED`)
-- [ ] Implement server-side Mutex with synchronous in-memory reservation (`409 Conflict`)
-- [ ] Implement stranded lock timeout detection (`STUCK_TIMEOUT_MS = 60s`) and recovery handler
-- [ ] Unit tests for storage, step ordering invariants, strict caps, and concurrency mutex
+- [x] Implement local JSON file storage repository (`backend/src/storage/jsonStore.ts`)
+- [x] Implement advisory file locking (`proper-lockfile`) for atomic disk writes
+- [x] Implement Dual State Machine (`status` milestone + `stepState: IDLE | RUNNING | FAILED`)
+- [x] Implement server-side Mutex with synchronous in-memory reservation (`409 Conflict`)
+- [x] Implement stranded lock timeout detection (`STUCK_TIMEOUT_MS = 60s`) and recovery handler
+- [x] Unit tests for storage, step ordering invariants, strict caps, and concurrency mutex
 
 ## Phase 2: Gemini API Integration Layer
 - [ ] Configure `@google/genai` client and REST service with `gemini-2.5-flash` and `gemini-2.5-flash-image` (Nano Banana)

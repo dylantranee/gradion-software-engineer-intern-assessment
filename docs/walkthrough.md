@@ -16,8 +16,15 @@ This document records the incremental progress, feature demonstrations, and veri
 
 ---
 
-## Milestone 1: Core Storage & State Machine Engine (Phase 1)
-*(Pending Phase 1 execution)*
+## Milestone 1: Core Storage Layer & Concurrency Engine (Phase 1 Complete)
+
+### Implemented & Verified Stories
+* **`US-1.1`**: Implemented `JsonStore` in `backend/src/storage/jsonStore.ts` supporting directory self-initialization (`/data/projects`, `/data/assets`), user profile management (`users.json`), and project CRUD operations.
+* **`US-1.2`**: Integrated `proper-lockfile` advisory write locks with UUID-tagged `.tmp` atomic file renaming to guarantee thread-safe concurrent disk writes without corruption.
+* **`US-1.3`**: Implemented the Dual State Machine architecture decoupling durable milestone progress (`status`: `CREATED` → `DONE`) from in-flight step states (`stepState`: `IDLE`, `RUNNING`, `FAILED`).
+* **`US-1.4`**: Implemented `PipelineMutex` in `backend/src/orchestrator/mutex.ts` with synchronous in-memory reservation (`activeLocks.add()`) to intercept simultaneous step execution and return `409 Conflict` before any async I/O.
+* **`US-1.5`**: Implemented stranded lock timeout detection (`STUCK_TIMEOUT_MS = 60_000ms`) and safe state recovery (`recoverProject()`) to reset `stepState = 'IDLE'` while preserving all completed milestone progress.
+* **`US-1.6`**: Implemented comprehensive unit/integration test suites in `backend/tests/storage.test.ts` (6 tests) and `backend/tests/mutex_and_state.test.ts` (5 tests), verified via `./test.sh` passing with 100% success (14/14 tests total).
 
 ---
 
