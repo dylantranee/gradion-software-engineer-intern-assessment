@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Environment variables & secrets (CRITICAL: Never commit Gemini API keys)
+.env
+.env.local
+.env.*.local
+
+# Local storage and runtime data
+data/
+server/data/
+client/dist/
+dist/
+build/
+
+# Logs and debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Vitest / Coverage
+coverage/
+.nyc_output/
