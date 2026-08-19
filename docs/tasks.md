@@ -28,11 +28,11 @@
 - [x] Integration tests with Gemini Mock adapter (deterministic offline generation)
 
 ## Phase 3: REST API Server & Endpoints
-- [ ] Identity endpoints (`POST /api/auth/login`, `GET /api/auth/me`) with `x-user-email` header
-- [ ] Project CRUD endpoints (`GET /api/projects`, `POST /api/projects`, `GET /api/projects/:id`) with multi-tenant isolation (`403 Forbidden`)
-- [ ] Step execution endpoint (`POST /api/projects/:id/step/:stepKey`)
-- [ ] Stranded lock recovery endpoint (`POST /api/projects/:id/recover`)
-- [ ] Static image asset streaming endpoint (`GET /api/projects/:id/assets/:filename`)
+- [x] Identity endpoints (`POST /api/auth/login`, `GET /api/auth/me`) with `x-user-email` header
+- [x] Project CRUD endpoints (`GET /api/projects`, `POST /api/projects`, `GET /api/projects/:id`) with multi-tenant isolation (`403 Forbidden`)
+- [x] Step execution endpoint (`POST /api/projects/:id/step/:stepKey`)
+- [x] Stranded lock recovery endpoint (`POST /api/projects/:id/recover`)
+- [x] Static image asset streaming endpoint (`GET /api/projects/:id/assets/:filename`)
 
 ## Phase 4: Frontend UI / UX (Gradion Design System)
 - [ ] Configure Tailwind CSS with Gradion tokens (`--grad-orange`, `--grad-ink`, radii, fonts) and `lucide-react`

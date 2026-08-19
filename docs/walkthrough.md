@@ -42,8 +42,16 @@ This document records the incremental progress, feature demonstrations, and veri
 
 ---
 
-## Milestone 3: REST API Endpoints (Phase 3)
-*(Pending Phase 3 execution)*
+## Milestone 3: REST API Server & Multi-Tenant Endpoints (Phase 3 Complete)
+
+### Implemented & Verified Stories
+* **`US-3.1`**: Implemented passwordless authentication endpoints (`POST /api/auth/login`, `GET /api/auth/me`) and `requireAuth` middleware parsing `x-user-email`.
+* **`US-3.2`**: Implemented project management CRUD routes in `backend/src/routes/projects.ts` (`GET /api/projects`, `POST /api/projects`, `GET /api/projects/:id`).
+* **`US-3.3`**: Implemented multi-tenant project authorization guards: User B receives `403 Forbidden` when attempting to read or mutate User A's projects.
+* **`US-3.4`**: Implemented pipeline step execution endpoint `POST /api/projects/:id/step/:stepKey` returning `200 OK` on success, `409 Conflict` on race conditions, and `400 Bad Request` on invalid prerequisites.
+* **`US-3.5`**: Implemented stranded lock recovery endpoint `POST /api/projects/:id/recover` to release stuck locks and reset `stepState = 'IDLE'`.
+* **`US-3.6`**: Implemented public image streaming route in `backend/src/routes/assets.ts` (`GET /api/projects/:id/assets/:filename`) returning `Content-Type: image/png` without requiring auth headers.
+* **`US-3.7`**: Implemented comprehensive REST API Supertest integration suite in `backend/tests/api.test.ts` (18 tests). Verified via `./test.sh` passing with 100% success (38/38 tests total).
 
 ---
 

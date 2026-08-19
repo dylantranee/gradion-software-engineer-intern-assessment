@@ -28,8 +28,13 @@ This document records the user stories, personas, and formal BDD/Gherkin accepta
 | **US-2.6** | Phase 2 | Step 4 — Chapter Scene Extraction & Strict Cap (Max 1 Scene) | Studio User / Architect | `P0 (Blocker)` |
 | **US-2.7** | Phase 2 | Step 5 — Chapter Illustration Art Generation (`gemini-2.5-flash-image`) | Studio User | `P0 (Blocker)` |
 | **US-2.8** | Phase 2 | Automated Gemini Pipeline & Mock Verification Test Suite | QA Engineer | `P0 (Blocker)` |
-| **US-3.1** | Phase 3 | Multi-Tenant Data Isolation (`x-user-email` Header) | Studio User | `P0 (Blocker)` |
-| **US-3.2** | Phase 3 | Local Image Asset Streaming (`GET /assets/:filename`) | Frontend Client | `P0 (Blocker)` |
+| **US-3.1** | Phase 3 | Passwordless Identity Endpoints (`/api/auth/login`, `/api/auth/me`) | Studio User | `P0 (Blocker)` |
+| **US-3.2** | Phase 3 | Project Management CRUD Endpoints (`GET /api/projects`, `POST /api/projects`) | Studio User | `P0 (Blocker)` |
+| **US-3.3** | Phase 3 | Multi-Tenant Data Isolation & Access Control (`403 Forbidden`) | Security / User | `P0 (Blocker)` |
+| **US-3.4** | Phase 3 | Pipeline Step Execution Endpoint (`POST /api/projects/:id/step/:stepKey`) | Studio User | `P0 (Blocker)` |
+| **US-3.5** | Phase 3 | Stranded Lock Recovery Endpoint (`POST /api/projects/:id/recover`) | Studio User | `P0 (Blocker)` |
+| **US-3.6** | Phase 3 | Public Static Image Asset Streaming (`GET /assets/:filename`) | Frontend Client | `P0 (Blocker)` |
+| **US-3.7** | Phase 3 | Automated REST API Server Integration Test Suite (Supertest) | QA Engineer | `P0 (Blocker)` |
 | **US-4.1** | Phase 4 | Gradion Design System Tokens & Responsive Stepper | Studio User | `P0 (Blocker)` |
 | **US-4.2** | Phase 4 | In-Flight Optimistic UI & Live Contextual Step Captions | Studio User | `P0 (Blocker)` |
 | **US-4.3** | Phase 4 | Full Book Modal Reader & Sequential Art Reveals | Studio User | `P1 (High)` |
@@ -481,37 +486,166 @@ Scenario: Executing full 5-step mock pipeline test
 
 ## Phase 3: REST API Server & Endpoints
 
-### `US-3.1: Multi-Tenant Data Isolation (x-user-email Header)`
+### `US-3.1: Passwordless Identity Endpoints (/api/auth/login, /api/auth/me)`
 * **As a** Studio User,  
-* **I want** my projects accessible only by my identity,  
+* **I want** to authenticate seamlessly using only my Name and Email via `POST /api/auth/login` and verify my session with `GET /api/auth/me`,  
+* **So that** I have a persistent local identity without friction or complicated credential management.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: User login and registration
+  Given a client sends a request to "POST /api/auth/login" with body '{"name": "Alice", "email": "alice@example.com"}'
+  When the server processes the request
+  Then the response status must be 200 OK
+  And the response body must return the user object with "id", "name", and "email".
+
+Scenario: Retrieving current authenticated user profile
+  Given an existing user "alice@example.com"
+  When a client sends a request to "GET /api/auth/me" with header "x-user-email: alice@example.com"
+  Then the response status must be 200 OK
+  And the user entity must be returned.
+
+Scenario: Rejecting unauthenticated requests missing x-user-email
+  When a client sends a request to "GET /api/auth/me" without the "x-user-email" header
+  Then the response status must be 401 Unauthorized.
+```
+
+---
+
+### `US-3.2: Project Management CRUD Endpoints (GET /api/projects, POST /api/projects)`
+* **As a** Studio User,  
+* **I want** REST endpoints to create new book projects (`POST /api/projects`), list all my existing projects (`GET /api/projects`), and fetch full project details (`GET /api/projects/:id`),  
+* **So that** I can create and manage multiple book illustration studio workspaces.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Creating a new book project
+  Given an authenticated user "alice@example.com"
+  When the user sends a request to "POST /api/projects" with header "x-user-email: alice@example.com" and body '{"title": "The Wind in the Willows", "bookText": "The Mole had been working..."}'
+  Then the response status must be 201 Created
+  And the response body must return a new project with "id", "status = CREATED", and "stepState = IDLE".
+
+Scenario: Listing projects for current user
+  Given User Alice has 2 projects and User Bob has 1 project
+  When Alice sends a request to "GET /api/projects" with header "x-user-email: alice@example.com"
+  Then the response status must be 200 OK
+  And the response array must contain exactly Alice's 2 projects.
+
+Scenario: Fetching a single project by ID
+  Given an existing project "proj_123" belonging to Alice
+  When Alice sends a request to "GET /api/projects/proj_123" with header "x-user-email: alice@example.com"
+  Then the response status must be 200 OK
+  And the full project object must be returned.
+```
+
+---
+
+### `US-3.3: Multi-Tenant Data Isolation & Access Control (403 Forbidden)`
+* **As a** Security-Minded Studio User,  
+* **I want** the backend server to enforce tenant ownership verification across all project routes,  
 * **So that** User B cannot view, modify, or execute pipeline steps on User A's projects.
 
 #### Acceptance Criteria (Gherkin)
 
 ```gherkin
-Scenario: Rejecting cross-user unauthorized project access
-  Given Project "proj_123" belonging to User A ("userA@example.com")
-  When User B sends a request to "GET /api/projects/proj_123" with header "x-user-email: userB@example.com"
+Scenario: Denying cross-tenant access to project details
+  Given Project "proj_123" created by User Alice ("alice@example.com")
+  When User Bob sends a request to "GET /api/projects/proj_123" with header "x-user-email: bob@example.com"
   Then the server must respond with HTTP status 403 Forbidden
-  And Project "proj_123" data must not be disclosed to User B.
+  And no project details must be disclosed to Bob.
+
+Scenario: Denying cross-tenant pipeline execution
+  Given Project "proj_123" created by User Alice ("alice@example.com")
+  When User Bob sends a request to "POST /api/projects/proj_123/step/STYLE" with header "x-user-email: bob@example.com"
+  Then the server must respond with HTTP status 403 Forbidden
+  And no pipeline step must be triggered.
 ```
 
 ---
 
-### `US-3.2: Local Image Asset Streaming (GET /assets/:filename)`
-* **As a** Frontend Client,  
-* **I want** to stream generated PNG images directly via relative URLs,  
-* **So that** standard `<img>` tags load images cleanly without requiring custom authorization headers.
+### `US-3.4: Pipeline Step Execution Endpoint (POST /api/projects/:id/step/:stepKey)`
+* **As a** Studio User,  
+* **I want** a dedicated REST endpoint `POST /api/projects/:id/step/:stepKey` to trigger any of the 5 pipeline steps (`STYLE`, `CHARACTERS`, `PORTRAITS`, `CHAPTERS`, `ILLUSTRATIONS`),  
+* **So that** my frontend client can drive step execution with mutex protection (`409 Conflict`) and validation (`400 Bad Request`).
 
 #### Acceptance Criteria (Gherkin)
 
 ```gherkin
-Scenario: Public streaming of generated project image assets
-  Given a generated image file at "data/projects/proj_123/assets/char_1_portrait.png"
+Scenario: Successful step execution
+  Given Project "proj_123" at status "CREATED" belonging to Alice
+  When Alice sends a request to "POST /api/projects/proj_123/step/STYLE" with header "x-user-email: alice@example.com"
+  Then the server must return status 200 OK
+  And the response body must contain the updated project at status "STYLE_SET".
+
+Scenario: Concurrency rejection on simultaneous step trigger
+  Given Project "proj_123" currently running Step 2
+  When a second request arrives at "POST /api/projects/proj_123/step/CHARACTERS"
+  Then the server must immediately return status 409 Conflict
+  And the error message must state that a step is already in progress.
+
+Scenario: Rejecting out-of-order step execution
+  Given Project "proj_123" at status "CREATED" (Style not set)
+  When Alice sends a request to "POST /api/projects/proj_123/step/PORTRAITS" with header "x-user-email: alice@example.com"
+  Then the server must return status 400 Bad Request
+  And the error message must explain the prerequisite steps required.
+```
+
+---
+
+### `US-3.5: Stranded Lock Recovery Endpoint (POST /api/projects/:id/recover)`
+* **As a** Studio User,  
+* **I want** an endpoint `POST /api/projects/:id/recover` to release stranded locks on stuck projects,  
+* **So that** I can unlock my project workspace without losing completed milestone data.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Recovering project from stranded state
+  Given Project "proj_123" in a stranded running state with milestone "CHARACTERS_GENERATED"
+  When Alice sends a request to "POST /api/projects/proj_123/recover" with header "x-user-email: alice@example.com"
+  Then the server must return status 200 OK
+  And the project must be returned with "stepState = IDLE"
+  And "status" must remain "CHARACTERS_GENERATED".
+```
+
+---
+
+### `US-3.6: Public Static Image Asset Streaming (GET /assets/:filename)`
+* **As a** Frontend Client,  
+* **I want** generated PNG assets streamed directly via `GET /api/projects/:id/assets/:filename` without requiring custom authorization headers,  
+* **So that** standard HTML `<img>` tags render character portraits and chapter illustrations seamlessly in the browser.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Streaming existing PNG image asset
+  Given a generated image file at "data/assets/proj_123/char_1_portrait.png"
   When a browser sends a request to "GET /api/projects/proj_123/assets/char_1_portrait.png"
   Then the server must respond with HTTP status 200 OK
   And the "Content-Type" header must be "image/png"
   And the binary image stream must be returned.
+
+Scenario: Requesting non-existent image asset
+  When a browser sends a request to "GET /api/projects/proj_123/assets/non_existent.png"
+  Then the server must respond with HTTP status 404 Not Found.
+```
+
+---
+
+### `US-3.7: Automated REST API Server Integration Test Suite (Supertest)`
+* **As a** QA Engineer,  
+* **I want** comprehensive Supertest HTTP integration tests covering authentication, project CRUD, 403 isolation, 409 mutex locks, 400 validations, and image streaming,  
+* **So that** the entire REST API layer is proven and executable via `./test.sh`.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Executing REST API integration test suite
+  Given the Vitest test runner and in-memory Express server
+  When executing "backend/tests/api.test.ts"
+  Then all API route tests (Auth, Projects CRUD, Multi-tenancy 403, Step Execution 200/409/400, Recovery, Asset Streaming) must pass with 0 failures.
 ```
 
 ---
