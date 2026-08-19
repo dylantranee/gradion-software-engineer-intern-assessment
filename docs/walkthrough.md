@@ -28,8 +28,17 @@ This document records the incremental progress, feature demonstrations, and veri
 
 ---
 
-## Milestone 2: Gemini API Integration (Phase 2)
-*(Pending Phase 2 execution)*
+## Milestone 2: Gemini API Integration Layer (Phase 2 Complete)
+
+### Implemented & Verified Stories
+* **`US-2.1`**: Implemented `GeminiClient` in `backend/src/gemini/client.ts` using `@google/genai` and `MockGeminiAdapter` in `backend/src/gemini/mockAdapter.ts` for offline deterministic testing with zero API quota consumption.
+* **`US-2.2`**: Implemented manuscript text context extraction and reusability, eliminating duplicate token uploads across steps.
+* **`US-2.3`**: Implemented Step 1: Art Style Generator (`gemini-2.5-flash`), enriching user-specified custom styles or deriving cohesive styles from narrative tone.
+* **`US-2.4`**: Implemented Step 2: Characters Generator (`gemini-2.5-flash`) with structured JSON schema and **hard server-side cap: max 2 adult characters**.
+* **`US-2.5`**: Implemented Step 3: Character Portraits Generator (`gemini-2.5-flash-image` Nano Banana) with cookbook negative system instructions ("no text, labels, signatures, borders, frames") and local PNG asset persistence.
+* **`US-2.6`**: Implemented Step 4: Chapters Generator (`gemini-2.5-flash`) with structured JSON schema and **hard server-side cap: max 1 chapter scene**, referencing character visual traits.
+* **`US-2.7`**: Implemented Step 5: Chapter Illustration Generator (`gemini-2.5-flash-image` Nano Banana) maintaining character visual continuity and marking project `DONE`.
+* **`US-2.8`**: Implemented `PipelineOrchestrator` (`backend/src/orchestrator/pipeline.ts`) tying store, mutex, and Gemini together. Implemented `backend/tests/pipeline_gemini.test.ts` (6 integration tests). Verified via `./test.sh` passing with 100% success (20/20 tests total).
 
 ---
 

@@ -18,14 +18,14 @@
 - [x] Unit tests for storage, step ordering invariants, strict caps, and concurrency mutex
 
 ## Phase 2: Gemini API Integration Layer
-- [ ] Configure `@google/genai` client and REST service with `gemini-2.5-flash` and `gemini-2.5-flash-image` (Nano Banana)
-- [ ] Implement book text ingestion & single-upload context reusability (File API context caching)
-- [ ] Implement Step 1: Style generator (user input enrichment or Gemini narrative derivation)
-- [ ] Implement Step 2: Characters generator (strict **max 2 adult characters** cap + JSON schema)
-- [ ] Implement Step 3: Character Portraits generator (`gemini-2.5-flash-image` Nano Banana with local PNG saving)
-- [ ] Implement Step 4: Chapters generator (strict **max 1 chapter** cap + character visual trait referencing)
-- [ ] Implement Step 5: Chapter Illustration generator (`gemini-2.5-flash-image` Nano Banana with character context)
-- [ ] Integration tests with Gemini Mock adapter (deterministic offline generation)
+- [x] Configure `@google/genai` client and REST service with `gemini-2.5-flash` and `gemini-2.5-flash-image` (Nano Banana)
+- [x] Implement book text ingestion & single-upload context reusability (File API context caching)
+- [x] Implement Step 1: Style generator (user input enrichment or Gemini narrative derivation)
+- [x] Implement Step 2: Characters generator (strict **max 2 adult characters** cap + JSON schema)
+- [x] Implement Step 3: Character Portraits generator (`gemini-2.5-flash-image` Nano Banana with local PNG saving)
+- [x] Implement Step 4: Chapters generator (strict **max 1 chapter** cap + character visual trait referencing)
+- [x] Implement Step 5: Chapter Illustration generator (`gemini-2.5-flash-image` Nano Banana with character context)
+- [x] Integration tests with Gemini Mock adapter (deterministic offline generation)
 
 ## Phase 3: REST API Server & Endpoints
 - [ ] Identity endpoints (`POST /api/auth/login`, `GET /api/auth/me`) with `x-user-email` header

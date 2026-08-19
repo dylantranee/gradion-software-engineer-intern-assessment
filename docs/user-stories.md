@@ -20,9 +20,14 @@ This document records the user stories, personas, and formal BDD/Gherkin accepta
 | **US-1.4** | Phase 1 | Server-Side Concurrency Mutex (`409 Conflict`) | Studio User / Cost | `P0 (Blocker)` |
 | **US-1.5** | Phase 1 | Stranded Lock Timeout & Safe State Recovery (`/recover`) | Studio User | `P0 (Blocker)` |
 | **US-1.6** | Phase 1 | Automated Storage & Concurrency Test Suite | QA Engineer | `P0 (Blocker)` |
-| **US-2.1** | Phase 2 | Gemini Text & Structured JSON Extraction (`gemini-2.5-flash`) | Studio User | `P0 (Blocker)` |
-| **US-2.2** | Phase 2 | Gemini Multimodal Image Generation (`gemini-2.5-flash-image`) | Studio User | `P0 (Blocker)` |
-| **US-2.3** | Phase 2 | Hard Server-Side Entity Caps (Max 2 Adults, Max 1 Chapter) | System Architect | `P0 (Blocker)` |
+| **US-2.1** | Phase 2 | Gemini Client SDK Configuration & Offline Mock Adapter | Backend Engineer | `P0 (Blocker)` |
+| **US-2.2** | Phase 2 | Book Manuscript Ingestion & Context Reusability | Budget Guardian | `P0 (Blocker)` |
+| **US-2.3** | Phase 2 | Step 1 — Art Style Generation & User Enrichment (`gemini-2.5-flash`) | Studio User | `P0 (Blocker)` |
+| **US-2.4** | Phase 2 | Step 2 — Character Extraction & Strict Cap (Max 2 Adults) | Studio User / Architect | `P0 (Blocker)` |
+| **US-2.5** | Phase 2 | Step 3 — Character Portrait Art Generation (`gemini-2.5-flash-image`) | Studio User | `P0 (Blocker)` |
+| **US-2.6** | Phase 2 | Step 4 — Chapter Scene Extraction & Strict Cap (Max 1 Scene) | Studio User / Architect | `P0 (Blocker)` |
+| **US-2.7** | Phase 2 | Step 5 — Chapter Illustration Art Generation (`gemini-2.5-flash-image`) | Studio User | `P0 (Blocker)` |
+| **US-2.8** | Phase 2 | Automated Gemini Pipeline & Mock Verification Test Suite | QA Engineer | `P0 (Blocker)` |
 | **US-3.1** | Phase 3 | Multi-Tenant Data Isolation (`x-user-email` Header) | Studio User | `P0 (Blocker)` |
 | **US-3.2** | Phase 3 | Local Image Asset Streaming (`GET /assets/:filename`) | Frontend Client | `P0 (Blocker)` |
 | **US-4.1** | Phase 4 | Gradion Design System Tokens & Responsive Stepper | Studio User | `P0 (Blocker)` |
@@ -309,64 +314,167 @@ Scenario: Mutex and state machine integration test execution
 
 ## Phase 2: Gemini API Integration Layer
 
-### `US-2.1: Gemini Text & Structured JSON Extraction (gemini-2.5-flash)`
-* **As a** Studio User,  
-* **I want** the system to analyze my book manuscript and extract consistent art styles, adult character portfolios, and chapter prompts via `gemini-2.5-flash`,  
-* **So that** entity data conforms to strict JSON schemas with sub-second response times.
+### `US-2.1: Gemini Client SDK Configuration & Offline Mock Adapter`
+* **As a** Backend Engineer,  
+* **I want** a unified Gemini client interface (`backend/src/gemini/client.ts`) that reads model configs from `.env` and supports a deterministic Mock Adapter (`backend/src/gemini/mockAdapter.ts`),  
+* **So that** developers and evaluators can run full automated test suites offline with zero API quota consumption.
 
 #### Acceptance Criteria (Gherkin)
 
 ```gherkin
-Scenario: Extracting structured characters with JSON Schema
-  Given a project with book text and an established art style
-  When the user executes Step 2 (Characters)
-  Then "gemini-2.5-flash" must be invoked with the structured "CHARACTER_SCHEMA"
-  And the output must be a valid JSON array containing character objects with "name" and "prompt".
+Scenario: Initializing live Gemini client with configured models
+  Given a valid ".env" configuration with "GEMINI_API_KEY", "GEMINI_TEXT_MODEL=gemini-2.5-flash", and "GEMINI_IMAGE_MODEL=gemini-2.5-flash-image"
+  When the Gemini service initializes
+  Then the "@google/genai" SDK client must be configured with the API key and model variables.
 
-Scenario: User custom art style enrichment
-  Given a project with book text and user-provided custom style text "Classic watercolor"
-  When the user executes Step 1 (Style)
-  Then "gemini-2.5-flash" must enrich and format the style string while preserving the user's intent.
+Scenario: Executing deterministic offline tests via Mock Adapter
+  Given a test environment without an active "GEMINI_API_KEY"
+  When automated pipeline tests are executed
+  Then the "MockGeminiClient" must return deterministic JSON entities and valid dummy PNG image buffers without network requests.
 ```
 
 ---
 
-### `US-2.2: Gemini Multimodal Image Generation (gemini-2.5-flash-image)`
+### `US-2.2: Book Manuscript Ingestion & Context Reusability`
+* **As a** Budget Guardian,  
+* **I want** the uploaded manuscript text stored locally and passed efficiently to subsequent Gemini generation steps,  
+* **So that** we eliminate duplicate manuscript token uploads and optimize free-tier API costs.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Reusing manuscript context across pipeline steps
+  Given a project initialized with manuscript text
+  When Step 1 (Style), Step 2 (Characters), or Step 4 (Chapters) is triggered
+  Then the stored manuscript text from the project entity must be reused directly
+  And no duplicate ingestion file operations must be performed.
+```
+
+---
+
+### `US-2.3: Step 1 — Art Style Generation & User Enrichment (gemini-2.5-flash)`
 * **As a** Studio User,  
-* **I want** character portraits (Step 3) and chapter scene illustrations (Step 5) rendered using the **Nano Banana** image family (`gemini-2.5-flash-image`),  
-* **So that** the visual artwork reflects the book's defined style while maintaining character visual consistency.
+* **I want** Step 1 to derive a rich art style from the manuscript tone or enhance my custom style prompt via `gemini-2.5-flash`,  
+* **So that** the project establishes an expressive, coherent aesthetic for all subsequent visual generation.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Automatic narrative style derivation
+  Given a project containing classical children's literature text and no custom user style
+  When the user executes Step 1 (Style)
+  Then "gemini-2.5-flash" must analyze the book's narrative tone, era, and atmosphere
+  And return a descriptive art style string (e.g. "Warm vintage watercolor with delicate ink cross-hatching")
+  And the project status must advance to "STYLE_SET".
+
+Scenario: User custom style prompt enrichment
+  Given a user enters custom style text "Gothic oil painting with dark moody chiaroscuro"
+  When the user executes Step 1 (Style)
+  Then "gemini-2.5-flash" must preserve the user's artistic intent while enriching the prompt for image generation
+  And the project status must advance to "STYLE_SET".
+```
+
+---
+
+### `US-2.4: Step 2 — Character Extraction & Strict Cap (Max 2 Adults)`
+* **As a** System Architect / Studio User,  
+* **I want** Step 2 to extract adult character profiles using `gemini-2.5-flash` with strict JSON schemas and enforce a hard cap of **at most 2 adult characters**,  
+* **So that** the system strictly complies with assessment rubric caps (§4.1) regardless of LLM generation size.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Extracting character profiles via structured JSON schema
+  Given a project with completed status "STYLE_SET"
+  When the user executes Step 2 (Characters)
+  Then "gemini-2.5-flash" must be invoked with the structured "CHARACTER_SCHEMA"
+  And the response must contain a valid JSON array of character objects with "name" and detailed visual "prompt" (clothing, facial features, age).
+
+Scenario: Hard server-side enforcement of maximum 2 adult characters
+  Given an LLM response containing 4 character candidates
+  When the server processes the Step 2 output
+  Then the saved "characters" array in the project state must contain at most 2 adult character entities
+  And all extra character entities beyond 2 must be truncated
+  And project status must advance to "CHARACTERS_GENERATED".
+```
+
+---
+
+### `US-2.5: Step 3 — Character Portrait Art Generation (gemini-2.5-flash-image)`
+* **As a** Studio User,  
+* **I want** Step 3 to render character portrait artwork using the authentic **Nano Banana** family (`gemini-2.5-flash-image`),  
+* **So that** each character has a dedicated high-fidelity portrait conforming to the established art style without unwanted text, labels, or frames.
 
 #### Acceptance Criteria (Gherkin)
 
 ```gherkin
 Scenario: Generating portrait artwork with negative system instructions
-  Given an extracted character prompt and established art style
-  When Step 3 (Portraits) is triggered
-  Then "gemini-2.5-flash-image" must be called with negative instructions ("no text, labels, signatures, nor borders")
-  And the resulting image buffer must be written to "data/projects/:id/assets/:characterId_portrait.png"
-  And the character entity must update "portraitReady" to true.
+  Given a project with 2 extracted character profiles and status "CHARACTERS_GENERATED"
+  When the user executes Step 3 (Portraits)
+  Then "gemini-2.5-flash-image" must be invoked sequentially for each character
+  And the prompt must incorporate the character prompt, art style, and negative instructions ("no text, labels, signatures, borders, nor frames")
+  And generated image buffers must be written to "data/assets/:projectId/:characterId_portrait.png"
+  And each character must set "portraitReady = true"
+  And project status must advance to "PORTRAITS_GENERATED".
 ```
 
 ---
 
-### `US-2.3: Hard Server-Side Entity Caps (Max 2 Adults, Max 1 Chapter)`
-* **As a** System Architect,  
-* **I want** the server to strictly limit entity counts regardless of LLM generation size,  
-* **So that** Step 2 outputs exactly/max 2 adult characters and Step 4 outputs exactly/max 1 chapter scene per assessment rules (§4.1).
+### `US-2.6: Step 4 — Chapter Scene Extraction & Strict Cap (Max 1 Scene)`
+* **As a** System Architect / Studio User,  
+* **I want** Step 4 to extract key chapter scene prompts using `gemini-2.5-flash` and enforce a hard cap of **exactly 1 chapter scene**,  
+* **So that** the scene incorporates established character visual traits while adhering strictly to assessment rubric constraints (§4.1).
 
 #### Acceptance Criteria (Gherkin)
 
 ```gherkin
-Scenario: Enforcing maximum 2 adult characters
-  Given an LLM response containing character data
-  When the backend processes Step 2 results
-  Then the saved "characters" array must contain at most 2 adult character entities
-  And any additional characters beyond 2 must be rejected or truncated.
+Scenario: Extracting chapter scene with character visual continuity
+  Given a project with status "PORTRAITS_GENERATED"
+  When the user executes Step 4 (Chapters)
+  Then "gemini-2.5-flash" must be invoked with the structured "CHAPTER_SCHEMA"
+  And the prompt must reference the names and visual traits of the characters from Step 2.
 
-Scenario: Enforcing maximum 1 chapter scene
-  Given an LLM response containing chapter scene data
-  When the backend processes Step 4 results
-  Then the saved "chapters" array must contain exactly 1 chapter scene entity.
+Scenario: Hard server-side enforcement of maximum 1 chapter scene
+  Given an LLM response containing multiple chapter scene suggestions
+  When the server processes the Step 4 output
+  Then the saved "chapters" array in the project state must contain exactly 1 chapter scene entity
+  And project status must advance to "CHAPTERS_GENERATED".
+```
+
+---
+
+### `US-2.7: Step 5 — Chapter Illustration Art Generation (gemini-2.5-flash-image)`
+* **As a** Studio User,  
+* **I want** Step 5 to render a full chapter scene illustration using `gemini-2.5-flash-image` (Nano Banana),  
+* **So that** the resulting artwork captures the dramatic climax of the chapter while visually matching the characters and art style.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Generating full chapter scene illustration
+  Given a project with 1 chapter scene and status "CHAPTERS_GENERATED"
+  When the user executes Step 5 (Illustrations)
+  Then "gemini-2.5-flash-image" must render the scene prompt combining the established art style, character descriptions, and negative instructions
+  And the generated image buffer must be written to "data/assets/:projectId/:chapterId_illustration.png"
+  And the chapter entity must set "illustrationReady = true"
+  And project status must advance to "DONE".
+```
+
+---
+
+### `US-2.8: Automated Gemini Pipeline & Mock Verification Test Suite`
+* **As a** QA Engineer,  
+* **I want** automated unit and integration tests covering the complete 5-step pipeline, cap truncations, negative prompt embedding, and error handling,  
+* **So that** end-to-end pipeline mechanics are thoroughly proven and runnable via `./test.sh`.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Executing full 5-step mock pipeline test
+  Given the Vitest test runner
+  When executing "backend/tests/pipeline_gemini.test.ts"
+  Then all 5 steps (Style, Characters, Portraits, Chapters, Illustrations) must execute in sequence
+  And verify that character count is <= 2, chapter count is == 1, negative instructions are embedded, and final project status is "DONE" with 0 failures.
 ```
 
 ---
