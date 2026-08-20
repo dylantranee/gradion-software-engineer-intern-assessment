@@ -175,7 +175,84 @@ Every card in the active grid renders:
 
 ---
 
-## 5. Data Schema Definitions
+## 5. New Project Creation Business Rules (`BRD-NEW-PROJ-01`)
+
+### 5.1 Scope, Security & Route Guarding
+* **BR-NEW-AUTH-01 (Authentication Guard):** Accessing `/projects/new` requires a valid active session (`gradion_user_*`). Unauthenticated navigation is intercepted immediately by client routing and redirected to `/login`.
+* **BR-NEW-TENANT-01 (Tenant Isolation):** Submissions transmit the `x-user-email` header. The server assigns ownership to `currentUser.id`, isolating the new project from all other users.
+
+### 5.2 Field Validation Matrix & Limits
+
+| Field | Requirement | Validation Rule | Error Message / Edge Case |
+| :--- | :--- | :--- | :--- |
+| **Book Title** | Mandatory (`*`) | Non-empty string after `.trim()`. | `"Please provide a book title."` |
+| **Book Text** | Mandatory (`*`) | Non-empty string after `.trim()`. | `"Please provide book text."` |
+| **File Upload** | Optional helper | Plain text (`.txt`) UTF-8 only; **Max 5MB**. | `"File exceeds 5MB limit. Please upload a smaller text file."` |
+
+### 5.3 Ingestion Channels & Client Behaviors
+
+```mermaid
+graph TD
+    A[Start Project Creation] --> B1[Channel 1: Direct Paste]
+    A --> B2[Channel 2: Upload .txt File]
+    A --> B3[Channel 3: Try sample text]
+    
+    B1 --> C[User types/pastes into Book Text area]
+    B2 --> D[FileReader parses .txt -> auto-fills title & text]
+    B3 --> E[In-memory fill: 'Wind in the Willows' + 342 words]
+    
+    C --> F[Click 'Create project']
+    D --> F
+    E --> F
+    
+    F --> G[POST /api/projects]
+    G --> H[Navigate to /projects/:id]
+```
+
+1. **Direct Paste / Typing:** User inputs or edits text directly in the `Book text` textarea.
+2. **File Upload & Smart Titling:**
+   - Drag-and-drop or file picker accepts `.txt` files up to 5MB.
+   - **Active Drag-Over Feedback (`BR-NEW-DRAG-01`):** Dragging a file over the dropzone triggers an active Gradion Orange ring highlight and dynamically updates text to `"Release to upload .txt file"`.
+   - HTML5 `FileReader` asynchronously extracts text and fills the textarea.
+   - **Smart Auto-Title:** If the title field is empty, auto-derives a clean title from the filename (strips extension, converts separators to spaces).
+3. **Demo Sample Autofill ("Try sample text"):**
+   - In-memory load of bundled *The Wind in the Willows* prose and default title.
+   - 100% pure client-side state mutation with **zero HTTP / API network requests**.
+   - Resets `fileName` to `null` so the file dropzone remains in its default state.
+
+### 5.4 Live Metrics & UI Layout Contract
+* **Live Word Counter:** Dynamically calculates `bookText.trim().split(/\s+/).length`. Hidden when text is empty; renders live formatted metric `(X words)` when text exists.
+* **1-Screen Form Layout:** Constrained to `max-w-3xl py-6 sm:py-8` with a non-resizable (`resize-none`) textarea to fit comfortably on 13"+ screens without vertical scrolling.
+* **Spatial Wayfinding:** Left-aligned breadcrumb link (`← Projects`) above the card, keeping the `New project` card heading flush with the input fields below.
+
+### 5.5 Submission Lifecycle & Server Initialization Contract
+
+| Event | Condition | System Action | Target View |
+| :--- | :--- | :--- | :--- |
+| **Submit Click** | Form submitted | `loading = true`: Submit button label transitions to `"Creating..."` and disables click to prevent duplicate submissions (**BR-NEW-SUBMIT-01**). | In-flight state |
+| **Submit Success** | Valid `title` + `bookText` | Dispatches `POST /api/projects`. Server provisions new record with **BR-NEW-INIT-01** default schema. | Immediately redirects to **`/projects/:id`** (**BR-NEW-NAV-01**) |
+| **Submit Error** | Server 5xx / Network failure | Renders inline red alert banner with server error message. Re-enables form. | Stays on `/projects/new` |
+| **Cancel / Exit** | Click `← Projects` or `Cancel` | Aborts creation; zero network requests sent. | Returns to **`/projects`** |
+
+#### Default Entity Provisioning Schema (`BR-NEW-INIT-01`)
+```typescript
+{
+  id: `proj_${uuid()}`,
+  userId: currentUser.id,
+  title: req.body.title.trim(),
+  bookText: req.body.bookText.trim(),
+  status: 'CREATED',
+  stepState: 'IDLE',
+  characters: [],
+  chapters: [],
+  createdAt: Date.now(),
+  updatedAt: Date.now()
+}
+```
+
+---
+
+## 6. Data Schema Definitions
 
 ```typescript
 export interface User {

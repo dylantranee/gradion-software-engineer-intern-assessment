@@ -42,6 +42,37 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+input, textarea, select, button {
+  outline: none !important;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none !important;
+  border-color: #ff6b00 !important;
+  box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.18) !important;
+}
+
+/* Custom Dropzone Utilities */
+.gd-dropzone {
+  outline: none !important;
+  border: 2px dashed var(--grad-line, #bab7b1);
+  background: var(--grad-paper-2, #f8f8f8);
+  transition: all 0.15s ease-in-out;
+}
+
+.gd-dropzone:hover {
+  border-color: #ff6b00;
+  background: rgba(255, 107, 0, 0.04);
+}
+
+.gd-dropzone.active-drag {
+  outline: none !important;
+  border-color: #ff6b00 !important;
+  background: #fff4ea !important;
+  box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.18) !important;
+  transform: scale(1.006);
+}
+
 /* Custom Utilities from app-demo.html */
 .gd-pill {
   display: inline-flex;

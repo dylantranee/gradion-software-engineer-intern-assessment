@@ -36,7 +36,7 @@ projectsRouter.post('/', async (req: AuthenticatedRequest, res: Response): Promi
   }
 
   if (!bookText || typeof bookText !== 'string' || bookText.trim().length === 0) {
-    res.status(400).json({ error: 'Book manuscript text is required.' });
+    res.status(400).json({ error: 'Book text is required.' });
     return;
   }
 
