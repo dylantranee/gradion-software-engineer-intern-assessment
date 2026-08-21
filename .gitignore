@@ -34,8 +34,10 @@ Thumbs.db
 .claude/settings.local.json
 .claude/worktrees/
 
-# Stray compiled output from shared/ (backend tsc emits here due to rootDir config; tracked as a follow-up fix)
+# Build artifacts from shared/'s own tsconfig.json (composite project, referenced by backend/tsconfig.json)
 shared/*.js
+shared/*.d.ts
+shared/*.tsbuildinfo
 
 # Vitest / Coverage
 coverage/
