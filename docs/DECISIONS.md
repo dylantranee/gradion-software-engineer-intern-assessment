@@ -2,6 +2,8 @@
 
 This document logs the major technical decisions, architectural trade-offs, and **explicit AI overrides** made during the engineering of the **Book Illustration Studio**.
 
+**On AI-authorship disclosure**: every commit in this repository was made with Claude Code as the AI copilot (see `CLAUDE.md`/`AGENTS.md`) — including the ones whose message doesn't say so. Per-commit disclosure (a body line, `Co-Authored-By`, etc.) wasn't applied consistently: it appeared partway through the project, then was deliberately dropped again in favor of single-line commit messages, which is this repo's house style. This paragraph is the disclosure instead of a per-commit one.
+
 ---
 
 ## 1. Architectural Decisions Matrix
