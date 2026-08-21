@@ -84,6 +84,44 @@ describe('US-2.1 - US-2.8: Gemini Integration & 5-Step Pipeline Orchestration', 
     expect(store.getProjectAssetPath(project.id, illFilename)).not.toBeNull();
   });
 
+  it('cost discipline: uploads/primes the book exactly once and chains every later step off the previous interaction id instead of resending it', async () => {
+    const user = await store.getOrCreateUser('Author', 'author@test.com');
+    const project = await store.createProject(
+      user.id,
+      'The Wind in the Willows',
+      'The Mole had been working very hard all the morning, spring-cleaning his little home...'
+    );
+
+    const primeBookSpy = vi.spyOn(mockGemini, 'primeBook');
+    const generateStyleSpy = vi.spyOn(mockGemini, 'generateStyle');
+    const generateCharactersSpy = vi.spyOn(mockGemini, 'generateCharacters');
+    const generateChaptersSpy = vi.spyOn(mockGemini, 'generateChapters');
+
+    const p1 = await orchestrator.executeStep(project.id, 'STYLE');
+    expect(p1.geminiFileUri).toBeTruthy();
+    expect(p1.geminiTextInteractionId).toBeTruthy();
+    const styleInteractionId = p1.geminiTextInteractionId;
+
+    const p2 = await orchestrator.executeStep(project.id, 'CHARACTERS');
+    expect(p2.geminiTextInteractionId).toBeTruthy();
+    expect(p2.geminiTextInteractionId).not.toBe(styleInteractionId); // chain advanced
+    const charactersInteractionId = p2.geminiTextInteractionId;
+
+    await orchestrator.executeStep(project.id, 'PORTRAITS');
+    const p4 = await orchestrator.executeStep(project.id, 'CHAPTERS');
+    await orchestrator.executeStep(project.id, 'ILLUSTRATIONS');
+
+    // The book is only ever uploaded/primed once, no matter how many steps ran.
+    expect(primeBookSpy).toHaveBeenCalledTimes(1);
+    const { interactionId: bookInteractionId } = await primeBookSpy.mock.results[0].value;
+
+    // Every text-chain call received the *previous* interaction id, never the raw book text.
+    expect(generateStyleSpy).toHaveBeenCalledWith(bookInteractionId, undefined);
+    expect(generateCharactersSpy).toHaveBeenCalledWith(styleInteractionId);
+    expect(generateChaptersSpy).toHaveBeenCalledWith(charactersInteractionId);
+    expect(p4.geminiTextInteractionId).not.toBe(charactersInteractionId); // chain advanced again
+  });
+
   it('US-2.3: enriches user custom style in Step 1', async () => {
     const user = await store.getOrCreateUser('Author', 'author@test.com');
     const project = await store.createProject(user.id, 'Custom Style Book', 'Some story text...');
@@ -111,13 +149,13 @@ describe('US-2.1 - US-2.8: Gemini Integration & 5-Step Pipeline Orchestration', 
     const char0ReadyAtCallTime: boolean[] = [];
     const spy = vi
       .spyOn(mockGemini, 'generatePortrait')
-      .mockImplementation(async (name: string, prompt: string, style: string) => {
+      .mockImplementation(async (previousInteractionId, name, prompt, style) => {
         // Snapshot the store's own persisted state right as each portrait generation
         // starts — proving character 0's portrait was already saved to disk before
         // character 1's generation began, not batched together at the end of the step.
         const snapshot = await store.getProject(project.id);
         char0ReadyAtCallTime.push(snapshot!.characters[0].portraitReady);
-        return original(name, prompt, style);
+        return original(previousInteractionId, name, prompt, style);
       });
 
     await orchestrator.executeStep(project.id, 'PORTRAITS');
@@ -137,13 +175,16 @@ describe('US-2.1 - US-2.8: Gemini Integration & 5-Step Pipeline Orchestration', 
     // Custom adapter returning 5 characters
     const overzealousGemini: IGeminiService = {
       ...mockGemini,
-      generateCharacters: async () => [
-        { name: 'Mole', prompt: 'Mole prompt' },
-        { name: 'Rat', prompt: 'Rat prompt' },
-        { name: 'Toad', prompt: 'Toad prompt' },
-        { name: 'Badger', prompt: 'Badger prompt' },
-        { name: 'Otter', prompt: 'Otter prompt' },
-      ],
+      generateCharacters: async () => ({
+        characters: [
+          { name: 'Mole', prompt: 'Mole prompt' },
+          { name: 'Rat', prompt: 'Rat prompt' },
+          { name: 'Toad', prompt: 'Toad prompt' },
+          { name: 'Badger', prompt: 'Badger prompt' },
+          { name: 'Otter', prompt: 'Otter prompt' },
+        ],
+        interactionId: 'mock_overzealous_characters',
+      }),
     };
 
     const cappingOrchestrator = new PipelineOrchestrator(store, mutex, overzealousGemini);
@@ -162,11 +203,14 @@ describe('US-2.1 - US-2.8: Gemini Integration & 5-Step Pipeline Orchestration', 
     // Custom adapter returning 3 chapters
     const overzealousGemini: IGeminiService = {
       ...mockGemini,
-      generateChapters: async () => [
-        { name: 'Chapter 1: The River', prompt: 'River scene' },
-        { name: 'Chapter 2: The Open Road', prompt: 'Road scene' },
-        { name: 'Chapter 3: The Wild Wood', prompt: 'Wood scene' },
-      ],
+      generateChapters: async () => ({
+        chapters: [
+          { name: 'Chapter 1: The River', prompt: 'River scene' },
+          { name: 'Chapter 2: The Open Road', prompt: 'Road scene' },
+          { name: 'Chapter 3: The Wild Wood', prompt: 'Wood scene' },
+        ],
+        interactionId: 'mock_overzealous_chapters',
+      }),
     };
 
     const cappingOrchestrator = new PipelineOrchestrator(store, mutex, overzealousGemini);

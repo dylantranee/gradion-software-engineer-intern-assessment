@@ -105,17 +105,38 @@ export class PipelineOrchestrator {
     }
   }
 
-  // --- Step 1: Style ---
+  // --- Step 1: Style — uploads the book once (File API) and starts the text chain ---
   private async runStepStyle(project: Project, customStyle?: string): Promise<Project> {
-    const enrichedStyle = await this.gemini.generateStyle(project.bookText, customStyle);
+    let fileUri = project.geminiFileUri;
+    let chainId = project.geminiTextInteractionId;
+
+    if (!fileUri || !chainId) {
+      const primed = await this.gemini.primeBook(project.bookText);
+      fileUri = primed.fileUri;
+      chainId = primed.interactionId;
+
+      // Persist immediately: retrying this step after this point must never re-upload the book.
+      await this.store.updateProject(project.id, (p) => ({
+        ...p,
+        geminiFileUri: fileUri,
+        geminiTextInteractionId: chainId,
+      }));
+    }
+
+    const { style, interactionId } = await this.gemini.generateStyle(chainId, customStyle);
+
     return this.store.completeStep(project.id, 'STYLE', 'STYLE_SET', {
-      style: enrichedStyle,
+      style,
+      geminiFileUri: fileUri,
+      geminiTextInteractionId: interactionId,
     });
   }
 
-  // --- Step 2: Characters (Max 2 Adults Cap) ---
+  // --- Step 2: Characters (Max 2 Adults Cap) — chains off the style interaction ---
   private async runStepCharacters(project: Project): Promise<Project> {
-    const rawCharacters = await this.gemini.generateCharacters(project.bookText, project.style || '');
+    const { characters: rawCharacters, interactionId } = await this.gemini.generateCharacters(
+      project.geminiTextInteractionId!
+    );
 
     // Strict server-side cap: Max 2 adult characters
     const capped = rawCharacters.slice(0, 2);
@@ -129,20 +150,24 @@ export class PipelineOrchestrator {
 
     return this.store.completeStep(project.id, 'CHARACTERS', 'CHARACTERS_GENERATED', {
       characters: characterEntities,
+      geminiTextInteractionId: interactionId,
     });
   }
 
-  // --- Step 3: Portraits (Nano Banana) ---
+  // --- Step 3: Portraits (Nano Banana) — starts (or continues) the image chain ---
   private async runStepPortraits(project: Project): Promise<Project> {
     const updatedCharacters: CharacterEntity[] = [...project.characters];
+    let imageChainId = project.geminiImageInteractionId;
 
     for (let i = 0; i < updatedCharacters.length; i++) {
       const char = updatedCharacters[i];
-      const imageBuffer = await this.gemini.generatePortrait(
+      const { image: imageBuffer, interactionId } = await this.gemini.generatePortrait(
+        imageChainId,
         char.name,
         char.prompt,
         project.style || ''
       );
+      imageChainId = interactionId;
 
       const filename = `${char.id}_portrait.png`;
       const relativePath = await this.store.saveProjectAsset(project.id, filename, imageBuffer);
@@ -153,24 +178,25 @@ export class PipelineOrchestrator {
         portraitReady: true,
       };
 
-      // Persist progressive per-item landing immediately so frontend polling displays it in real time
+      // Persist progressive per-item landing immediately so frontend polling displays it in real
+      // time, and so a retry after a mid-loop failure resumes the image chain from the right id.
       await this.store.updateProject(project.id, (p) => ({
         ...p,
         characters: [...updatedCharacters],
+        geminiImageInteractionId: imageChainId,
       }));
     }
 
     return this.store.completeStep(project.id, 'PORTRAITS', 'PORTRAITS_GENERATED', {
       characters: updatedCharacters,
+      geminiImageInteractionId: imageChainId,
     });
   }
 
-  // --- Step 4: Chapters (Max 1 Chapter Cap) ---
+  // --- Step 4: Chapters (Max 1 Chapter Cap) — chains off the characters interaction ---
   private async runStepChapters(project: Project): Promise<Project> {
-    const rawChapters = await this.gemini.generateChapters(
-      project.bookText,
-      project.style || '',
-      project.characters.map((c) => ({ name: c.name, prompt: c.prompt }))
+    const { chapters: rawChapters, interactionId } = await this.gemini.generateChapters(
+      project.geminiTextInteractionId!
     );
 
     // Strict server-side cap: Exactly/Max 1 chapter
@@ -185,20 +211,23 @@ export class PipelineOrchestrator {
 
     return this.store.completeStep(project.id, 'CHAPTERS', 'CHAPTERS_GENERATED', {
       chapters: chapterEntities,
+      geminiTextInteractionId: interactionId,
     });
   }
 
-  // --- Step 5: Illustrations (Nano Banana) ---
+  // --- Step 5: Illustrations (Nano Banana) — continues the portraits' image chain for consistency ---
   private async runStepIllustrations(project: Project): Promise<Project> {
     const updatedChapters: ChapterEntity[] = [];
+    let imageChainId = project.geminiImageInteractionId;
 
     for (const chap of project.chapters) {
-      const imageBuffer = await this.gemini.generateIllustration(
+      const { image: imageBuffer, interactionId } = await this.gemini.generateIllustration(
+        imageChainId,
         chap.name,
         chap.prompt,
-        project.style || '',
-        project.characters.map((c) => ({ name: c.name, prompt: c.prompt }))
+        project.style || ''
       );
+      imageChainId = interactionId;
 
       const filename = `${chap.id}_illustration.png`;
       const relativePath = await this.store.saveProjectAsset(project.id, filename, imageBuffer);
@@ -212,6 +241,7 @@ export class PipelineOrchestrator {
 
     return this.store.completeStep(project.id, 'ILLUSTRATIONS', 'DONE', {
       chapters: updatedChapters,
+      geminiImageInteractionId: imageChainId,
     });
   }
 }

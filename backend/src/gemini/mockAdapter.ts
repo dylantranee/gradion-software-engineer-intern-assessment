@@ -1,9 +1,4 @@
-import {
-  IGeminiService,
-  CharacterGenerated,
-  ChapterGenerated,
-  NEGATIVE_PROMPT_INSTRUCTIONS,
-} from './types.js';
+import { IGeminiService, CharacterGenerated, ChapterGenerated } from './types.js';
 
 // Valid 1x1 transparent/colored PNG base64 buffer for deterministic offline testing
 const DUMMY_PNG_BUFFER = Buffer.from(
@@ -11,66 +6,88 @@ const DUMMY_PNG_BUFFER = Buffer.from(
   'base64'
 );
 
+/**
+ * Deterministic offline fixtures, shaped like the real GeminiClient's chained
+ * Interactions API — every call still returns a fresh `interactionId` so the
+ * orchestrator's chain-persistence logic exercises the same code path in
+ * tests as it does against the real API.
+ */
 export class MockGeminiAdapter implements IGeminiService {
-  public async generateStyle(bookText: string, customStyle?: string | null): Promise<string> {
-    if (customStyle && customStyle.trim().length > 0) {
-      return `Enriched Art Style: ${customStyle.trim()} with fine gouache brushstrokes, dramatic atmospheric lighting, and hand-inked linework.`;
-    }
-    return 'Classic vintage storybook watercolor with delicate pen-and-ink contour lines, warm sepia undertones, and gentle textural grain.';
+  private counter = 0;
+
+  private nextInteractionId(prefix: string): string {
+    this.counter += 1;
+    return `mock_${prefix}_${this.counter}`;
   }
 
-  public async generateCharacters(bookText: string, style: string): Promise<CharacterGenerated[]> {
-    // Return mock characters - note the hard cap of 2 adult characters
-    return [
+  public async primeBook(bookText: string): Promise<{ fileUri: string; interactionId: string }> {
+    return {
+      fileUri: `mock://files/book_${this.counter + 1}`,
+      interactionId: this.nextInteractionId('book'),
+    };
+  }
+
+  public async generateStyle(
+    previousInteractionId: string,
+    customStyle?: string | null
+  ): Promise<{ style: string; interactionId: string }> {
+    const style =
+      customStyle && customStyle.trim().length > 0
+        ? `Enriched Art Style: ${customStyle.trim()} with fine gouache brushstrokes, dramatic atmospheric lighting, and hand-inked linework.`
+        : 'Classic vintage storybook watercolor with delicate pen-and-ink contour lines, warm sepia undertones, and gentle textural grain.';
+
+    return { style, interactionId: this.nextInteractionId('style') };
+  }
+
+  public async generateCharacters(
+    previousInteractionId: string
+  ): Promise<{ characters: CharacterGenerated[]; interactionId: string }> {
+    const characters: CharacterGenerated[] = [
       {
         name: 'The Mole',
-        prompt: `Portrait of an adult anthropomorphic Mole wearing a velvet corduroy smoking jacket and wire-rim spectacles, gentle earthy demeanor, in the style of ${style}.`,
+        prompt:
+          'Portrait of an adult anthropomorphic Mole wearing a velvet corduroy smoking jacket and wire-rim spectacles, gentle earthy demeanor.',
       },
       {
         name: 'The Water Rat',
-        prompt: `Portrait of an adult anthropomorphic Water Rat in a striped navy fisherman jersey and tweed cap, confident nautical posture, in the style of ${style}.`,
+        prompt:
+          'Portrait of an adult anthropomorphic Water Rat in a striped navy fisherman jersey and tweed cap, confident nautical posture.',
       },
     ];
+
+    return { characters, interactionId: this.nextInteractionId('characters') };
   }
 
   public async generatePortrait(
+    previousInteractionId: string | undefined,
     characterName: string,
     characterPrompt: string,
     style: string
-  ): Promise<Buffer> {
-    // Verifies negative instructions presence
-    const fullPrompt = `${characterPrompt} Style: ${style}. ${NEGATIVE_PROMPT_INSTRUCTIONS}`;
-    if (!fullPrompt.includes('NEGATIVE CONSTRAINTS')) {
-      throw new Error('Missing negative constraints in prompt');
-    }
-    return DUMMY_PNG_BUFFER;
+  ): Promise<{ image: Buffer; interactionId: string }> {
+    return { image: DUMMY_PNG_BUFFER, interactionId: this.nextInteractionId('portrait') };
   }
 
   public async generateChapters(
-    bookText: string,
-    style: string,
-    characters: Array<{ name: string; prompt: string }>
-  ): Promise<ChapterGenerated[]> {
-    const charNames = characters.map((c) => c.name).join(' and ');
-    return [
+    previousInteractionId: string
+  ): Promise<{ chapters: ChapterGenerated[]; interactionId: string }> {
+    const chapters: ChapterGenerated[] = [
       {
         name: 'Chapter 1: The River Bank',
-        prompt: `Scene of ${charNames} meeting beside a sun-dappled bubbling river with weeping willows and a small wooden rowboat, rendered in ${style}.`,
+        prompt:
+          'Scene of The Mole and The Water Rat meeting beside a sun-dappled bubbling river with weeping willows and a small wooden rowboat.',
       },
     ];
+
+    return { chapters, interactionId: this.nextInteractionId('chapters') };
   }
 
   public async generateIllustration(
+    previousInteractionId: string | undefined,
     chapterName: string,
     chapterPrompt: string,
-    style: string,
-    characters: Array<{ name: string; prompt: string }>
-  ): Promise<Buffer> {
-    const fullPrompt = `${chapterPrompt} Style: ${style}. ${NEGATIVE_PROMPT_INSTRUCTIONS}`;
-    if (!fullPrompt.includes('NEGATIVE CONSTRAINTS')) {
-      throw new Error('Missing negative constraints in prompt');
-    }
-    return DUMMY_PNG_BUFFER;
+    style: string
+  ): Promise<{ image: Buffer; interactionId: string }> {
+    return { image: DUMMY_PNG_BUFFER, interactionId: this.nextInteractionId('illustration') };
   }
 }
 

@@ -97,6 +97,22 @@ During development, the AI assistant proposed approaches that were evaluated, ch
 * **Reason for Rejection**: User explicitly preferred standard HTML5 History API URLs (`/projects`, `/projects/:id`) for modern browser semantics without hash fragments.
 * **Human Override**: Implemented **HTML5 History API with `RouterProvider`, `useRouter()`, and `<Link>` components** in `frontend/src/router.tsx`.
 
+### Override 6: Replacing per-step `generateContent` calls with the notebook's actual chaining mechanism
+
+The original Gemini client (Decision 6/7 above) called `models.generateContent` independently for each text step, re-sending a truncated copy of the book text (`bookText.substring(0, 3000–4000)`) on every STYLE/CHARACTERS/CHAPTERS call, with no File API upload and no conversation memory between calls — `Project.geminiFileUri` was declared in the schema but never actually referenced anywhere in the codebase. This directly contradicted §4.3's "send the book once and reuse it across steps" requirement, and it wasn't what the reference notebook does.
+
+I pulled the actual notebook JSON (not a summary — I don't trust an LLM's paraphrase of API code without checking, so I fetched the raw `.ipynb` and read the real cells) and it uses `client.files.upload()` once, then `client.interactions.create(..., previous_interaction_id=...)` chained across every step — including chaining the chapter-illustration image calls off the *portrait* image calls, so the model can literally see its own earlier portraits when drawing the chapter scene. That's a real quality improvement our old code didn't have at all: it only repeated a text description of the characters into the illustration prompt, never any actual visual reference.
+
+Rebuilt `GeminiClient` around `ai.interactions.create` + `ai.files.upload`, added `geminiFileUri` / `geminiTextInteractionId` / `geminiImageInteractionId` to `Project` so the chain survives across separate HTTP requests and server restarts (each step just persists a string id, no in-memory chat object needed — this is what makes it compatible with our stateless resumability model). Kept the same `gemini-2.5-flash` / `gemini-2.5-flash-image` model choice from Decision 6/7 rather than jumping to the notebook's `gemini-3.x` family, since those weren't independently verified against this project's own key/quota.
+
+**Cost**: more moving state to keep consistent (three new `Project` fields, all optional, all threaded through five call sites in `pipeline.ts`), and the mock adapter now has to fabricate plausible interaction ids to keep the same code path exercised in tests as production.
+
+### Override 7 (self-correction, not an AI-vs-human one): `gemini-2.5-flash` had actually been retired
+
+While manually testing Override 6's rewrite against the real API (with a real key — not just against the mock), the very first live call came back `404: This model models/gemini-2.5-flash is no longer available to new users. Please update your code to use models/gemini-3.6-flash.` Decision 6 above was a defensible choice when it was made; it just went stale. Rather than hardcode `gemini-3.6-flash` and risk the same problem again in a few months, switched `GEMINI_TEXT_MODEL` to the `-latest` alias family (`gemini-flash-latest`), which Google keeps pointed at whatever the current recommended flash model is. Re-ran the same manual test after the change — real File API upload, real chained style/characters/portrait calls, all succeeded (a generated portrait is attached in the PR/conversation, not just a "trust me it works").
+
+This also caught a real test-isolation bug as a side effect: `backend/tests/api.test.ts` builds the real `app.ts`, which was wired to the real `geminiClient` singleton whenever `.env` had a real key — meaning the automated suite had been silently making one live network call per run all along, and only ever "passed" because the stale model name made it fail fast (under the 5s test timeout) before falling into the mock fallback. Fixed by forcing `GEMINI_API_KEY=''` in `backend/vitest.config.ts`'s `test.env`, so the suite is deterministic and quota-free regardless of what's in the developer's local `.env`.
+
 ---
 
 ## 3. "One More Day" Roadmap

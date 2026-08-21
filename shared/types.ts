@@ -44,7 +44,12 @@ export interface Project {
   userId: string;
   title: string;
   bookText: string;
+  /** Gemini File API URI for the uploaded book text — set once, on the first STYLE run, and reused by every later step instead of re-sending the raw text. */
   geminiFileUri?: string;
+  /** Id of the most recent interaction in the *text* chain (style -> characters -> chapters), chained via `previous_interaction_id` so each step reuses prior context instead of resending it. */
+  geminiTextInteractionId?: string;
+  /** Id of the most recent interaction in the *image* chain (portraits -> illustrations), so illustrations can refer back to the generated portraits for character consistency. */
+  geminiImageInteractionId?: string;
   createdAt: number;
   updatedAt: number;
   status: PipelineStatus;

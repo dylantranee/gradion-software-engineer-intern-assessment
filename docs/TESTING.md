@@ -7,7 +7,7 @@ Tests target the invariants that are expensive to get wrong at runtime — step 
 ### What We Test
 
 **Backend** (`backend/tests/`):
-1. `pipeline_gemini.test.ts` — Step ordering and prerequisites (e.g. `CHARACTERS` cannot run before `STYLE`); the hard server-side caps (max 2 adult characters, max 1 chapter scene) are enforced even when the mocked Gemini adapter returns more; prompt construction always includes `NEGATIVE_PROMPT_INSTRUCTIONS` for image steps.
+1. `pipeline_gemini.test.ts` — Step ordering and prerequisites (e.g. `CHARACTERS` cannot run before `STYLE`); the hard server-side caps (max 2 adult characters, max 1 chapter scene) are enforced even when the mocked Gemini adapter returns more; the book is uploaded/primed exactly once regardless of how many steps run, and every later step chains off the *previous interaction id* rather than resending the book text (this is what `Project.geminiFileUri`/`geminiTextInteractionId`/`geminiImageInteractionId` exist for — see `docs/DECISIONS.md` Override 6).
 2. `mutex_and_state.test.ts` — `PipelineMutex` rejects a second concurrent `executeStep` call on the same project with `ConflictError` (→ `409`); stranded-lock detection (`stepState === 'RUNNING'` past `STUCK_TIMEOUT_MS`).
 3. `storage.test.ts` — `JsonStore` atomic writes under concurrent updates (no corruption, no lost writes) via `proper-lockfile`.
 4. `api.test.ts` — Full REST surface: auth provisioning/lookup, multi-tenant isolation (`403` when User B touches User A's project), step execution happy path and `400` on missing prerequisites, `/recover` clearing a stranded lock without discarding completed pipeline data, asset streaming with `image/png` headers.
@@ -21,7 +21,7 @@ Tests target the invariants that are expensive to get wrong at runtime — step 
 - `sanity.test.tsx` — environment sanity check.
 
 ### What We Deliberately Do Not Test
-- **Live Gemini API calls.** All backend tests run against `mockGeminiAdapter`, never the real `@google/genai` client — this keeps the suite deterministic, fast, and free of quota burn. `GeminiClient` itself falls back to the same mock adapter automatically whenever a key is absent or a live call throws, so manual/local runs against the real API are exercised outside the automated suite.
+- **Live Gemini API calls.** All backend tests run against `mockGeminiAdapter`, never the real `@google/genai` client — this keeps the suite deterministic, fast, and free of quota burn. `backend/vitest.config.ts` forces `GEMINI_API_KEY=''` for the test run specifically so this holds even when the developer's local `.env` has a real key (it didn't always — `api.test.ts` was silently making one live network call per run before this was added; see `docs/DECISIONS.md` Override 7). `GeminiClient` itself falls back to the same mock adapter automatically whenever a key is absent or a live call throws, logging a warning so the fallback is never silent; manual/local runs against the real API (including the actual Interactions-API chaining and File API upload) are exercised outside the automated suite.
 - **Pixel-level CSS/layout snapshots.** Visual polish (spacing, responsive breakpoints) is verified manually in-browser against the Gradion design tokens, not via snapshot testing — snapshots are brittle and don't catch the things that actually matter (a broken breakpoint, a layout jump).
 - **True end-to-end browser tests.** Not required per the assessment brief; component + integration tests at the Vitest/RTL level give faster, more targeted feedback for a project this size.
 
@@ -47,17 +47,17 @@ Running Backend & Frontend Tests...
 
  RUN  v3.2.7 /Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/backend
 
- ✓ tests/sanity.test.ts (2 tests) 8ms
- ✓ tests/mutex_and_state.test.ts (5 tests) 35ms
- ✓ tests/pipeline_gemini.test.ts (7 tests) 147ms
- ✓ tests/storage.test.ts (6 tests) 798ms
-   ✓ US-1.1 & US-1.2: Local JSON Storage Repository & Advisory Locking > US-1.2: handles concurrent atomic updates safely without corruption  762ms
- ✓ tests/api.test.ts (19 tests) 560ms
+ ✓ tests/sanity.test.ts (2 tests) 5ms
+ ✓ tests/mutex_and_state.test.ts (5 tests) 32ms
+ ✓ tests/storage.test.ts (6 tests) 408ms
+   ✓ US-1.1 & US-1.2: Local JSON Storage Repository & Advisory Locking > US-1.2: handles concurrent atomic updates safely without corruption  364ms
+ ✓ tests/pipeline_gemini.test.ts (8 tests) 198ms
+ ✓ tests/api.test.ts (19 tests) 324ms
 
  Test Files  5 passed (5)
-      Tests  39 passed (39)
-   Start at  09:47:58
-   Duration  1.58s (transform 475ms, setup 0ms, collect 1.40s, tests 1.55s, environment 3ms, prepare 711ms)
+      Tests  40 passed (40)
+   Start at  10:07:12
+   Duration  1.66s (transform 361ms, setup 0ms, collect 1.23s, tests 967ms, environment 2ms, prepare 1.07s)
 
 
 > frontend@1.0.0 test
@@ -66,25 +66,25 @@ Running Backend & Frontend Tests...
 
  RUN  v3.2.7 /Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/frontend
 
- ✓ src/__tests__/Stepper.test.tsx (3 tests) 93ms
- ✓ src/__tests__/BookModal.test.tsx (5 tests) 172ms
- ✓ src/__tests__/AuthPage.test.tsx (3 tests) 320ms
- ✓ src/__tests__/ProjectListPage.test.tsx (4 tests) 343ms
- ✓ src/__tests__/App.test.tsx (4 tests) 380ms
- ✓ src/__tests__/NewProjectPage.test.tsx (7 tests) 676ms
- ✓ src/__tests__/ProjectDetailPage.test.tsx (38 tests) 1140ms
- ✓ src/__tests__/CharacterCard.test.tsx (3 tests) 74ms
- ✓ src/__tests__/sanity.test.tsx (1 test) 36ms
- ✓ src/__tests__/Router.test.tsx (3 tests) 84ms
- ✓ src/__tests__/ChapterCard.test.tsx (3 tests) 93ms
- ✓ src/__tests__/StatusPill.test.tsx (4 tests) 27ms
+ ✓ src/__tests__/CharacterCard.test.tsx (3 tests) 92ms
+ ✓ src/__tests__/BookModal.test.tsx (5 tests) 255ms
+ ✓ src/__tests__/AuthPage.test.tsx (3 tests) 341ms
+ ✓ src/__tests__/ProjectListPage.test.tsx (4 tests) 433ms
+ ✓ src/__tests__/App.test.tsx (4 tests) 475ms
+ ✓ src/__tests__/ChapterCard.test.tsx (3 tests) 107ms
+ ✓ src/__tests__/NewProjectPage.test.tsx (7 tests) 707ms
+ ✓ src/__tests__/ProjectDetailPage.test.tsx (38 tests) 1262ms
+ ✓ src/__tests__/Router.test.tsx (3 tests) 69ms
+ ✓ src/__tests__/sanity.test.tsx (1 test) 41ms
+ ✓ src/__tests__/Stepper.test.tsx (3 tests) 47ms
+ ✓ src/__tests__/StatusPill.test.tsx (4 tests) 60ms
 
  Test Files  12 passed (12)
       Tests  78 passed (78)
-   Start at  09:48:01
-   Duration  6.91s (transform 1.18s, setup 2.31s, collect 17.64s, tests 3.44s, environment 10.25s, prepare 2.69s)
+   Start at  10:07:15
+   Duration  8.00s (transform 1.41s, setup 2.23s, collect 17.58s, tests 3.89s, environment 12.33s, prepare 3.18s)
 ```
 
-**Totals: 17 test files, 117 tests, 0 failures.**
+**Totals: 17 test files, 118 tests, 0 failures.**
 
 > Note: `npm run build` currently fails on the backend workspace with pre-existing `tsc` errors (missing `rootDir` config for the shared `shared/` import, a couple of implicit-`any` parameters, and `string | string[]` narrowing on `req.params` in a few routes). `./test.sh` passing does not mean `npm run build` is clean — tracked as follow-up work, not part of this test report.

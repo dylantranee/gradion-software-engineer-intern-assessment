@@ -31,7 +31,7 @@ cp .env.example .env
 Edit `.env` to supply your `GEMINI_API_KEY`:
 ```ini
 GEMINI_API_KEY=your_gemini_api_key_here
-GEMINI_TEXT_MODEL=gemini-2.5-flash
+GEMINI_TEXT_MODEL=gemini-flash-latest
 GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
 BACKEND_PORT=3001
 FRONTEND_PORT=3000
@@ -53,7 +53,7 @@ All planning documents, decisions, user stories, and test logs are located in `/
 1. **[User Stories & Acceptance Criteria](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/user-stories.md)** (`docs/user-stories.md`)
    * Comprehensive Agile backlog across all phases with formal Given-When-Then Gherkin acceptance criteria (`US-0.1` to `US-5.1`).
 2. **[Architecture Decisions & AI Copilot Overrides](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/DECISIONS.md)** (`docs/DECISIONS.md`)
-   * 10 architectural decisions with trade-offs, **4 explicit AI overrides** (Next.js rejection, Postgres rejection, Client-side locking rejection, Imagen 3 correction to Nano Banana), and "One More Day" roadmap.
+   * 10 architectural decisions with trade-offs, **7 explicit AI overrides** (including the Next.js/Postgres/client-side-locking/Imagen-3 rejections, replacing per-step Gemini calls with the notebook's File-API + Interactions-API chaining, and a live-discovered model-retirement fix), and "One More Day" roadmap.
 3. **[Master Implementation Plan & PRD](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/plan.md)** (`docs/plan.md`)
    * 14-row architectural decision matrix, 5-step pipeline mechanics, negative prompt rules, and state machine specifications.
 4. **[System Architecture](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/architecture.md)** (`docs/architecture.md`)
@@ -74,7 +74,7 @@ All planning documents, decisions, user stories, and test logs are located in `/
 * **Backend**: Node.js, Express, TypeScript, `@google/genai`, `proper-lockfile`, `uuid`, `cors`, `dotenv`
 * **Frontend**: React 18, Vite, TypeScript, Tailwind CSS (Gradion Design Tokens), `lucide-react`
 * **AI Models**:
-  * **Text & Structure**: `gemini-2.5-flash` with structured `responseSchema`
-  * **Multimodal Generation**: `gemini-2.5-flash-image` (Nano Banana family)
+  * **Text & Structure**: `gemini-flash-latest` via the Gemini Interactions API (`ai.interactions.create`, chained via `previous_interaction_id`), structured JSON output
+  * **Multimodal Generation**: `gemini-2.5-flash-image` (Nano Banana family), same chained Interactions API
 * **Testing**: Vitest, Supertest, React Testing Library, jsdom
 * **Monorepo**: Root `npm workspaces` (`/backend`, `/frontend`, `/shared`)
