@@ -79,7 +79,7 @@ During development, the AI assistant proposed approaches that were evaluated, ch
 
 ### Override 2: Rejection of External PostgreSQL Database
 * **AI Proposal**: Use PostgreSQL with Prisma ORM or Docker Compose for project persistence.
-* **Reason for Rejection**: Assessment specification §5.2 states: *"Local persistence: Use local disk storage... do NOT require a remote database."* Requiring PostgreSQL would penalize evaluator onboarding.
+* **Reason for Rejection**: The assessment explicitly allows disk-based storage as a valid choice at this scope ("JSON files on disk genuinely fit this scope, if done properly"), and a real DB would add a service a reviewer has to install and configure just to run the app locally — friction that buys nothing at this data volume.
 * **Human Override**: Mandated **atomic local JSON files with `proper-lockfile` advisory locks**.
 
 ### Override 3: Rejection of Purely Client-Side Button Disabling for Concurrency
