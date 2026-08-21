@@ -19,7 +19,7 @@ export class GeminiClient implements IGeminiService {
 
   constructor(apiKey?: string, textModel?: string, imageModel?: string) {
     const key = apiKey || config.geminiApiKey;
-    this.textModel = textModel || config.geminiTextModel || 'gemini-2.5-flash';
+    this.textModel = textModel || config.geminiTextModel || 'gemini-flash-latest';
     this.imageModel = imageModel || config.geminiImageModel || 'gemini-2.5-flash-image';
 
     if (key && key.trim() !== '' && key !== 'your_gemini_api_key_here') {
