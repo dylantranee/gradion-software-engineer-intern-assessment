@@ -29,6 +29,23 @@ describe('US-2.1 - US-2.8: Gemini Integration & 5-Step Pipeline Orchestration', 
     }
   });
 
+  // Spreading a class instance (`{ ...mockGemini }`) only copies its own
+  // enumerable fields, not prototype methods — it silently produces an
+  // object missing every IGeminiService method except the ones re-added
+  // after the spread. This builds a real, fully-typed adapter that
+  // delegates to the current mockGemini for everything not overridden.
+  function withOverride(overrides: Partial<IGeminiService>): IGeminiService {
+    return {
+      primeBook: mockGemini.primeBook.bind(mockGemini),
+      generateStyle: mockGemini.generateStyle.bind(mockGemini),
+      generateCharacters: mockGemini.generateCharacters.bind(mockGemini),
+      generatePortrait: mockGemini.generatePortrait.bind(mockGemini),
+      generateChapters: mockGemini.generateChapters.bind(mockGemini),
+      generateIllustration: mockGemini.generateIllustration.bind(mockGemini),
+      ...overrides,
+    };
+  }
+
   it('US-2.8: executes full 5-step pipeline to completion (DONE)', async () => {
     const user = await store.getOrCreateUser('Author', 'author@test.com');
     const project = await store.createProject(
@@ -173,8 +190,7 @@ describe('US-2.1 - US-2.8: Gemini Integration & 5-Step Pipeline Orchestration', 
     await orchestrator.executeStep(project.id, 'STYLE');
 
     // Custom adapter returning 5 characters
-    const overzealousGemini: IGeminiService = {
-      ...mockGemini,
+    const overzealousGemini = withOverride({
       generateCharacters: async () => ({
         characters: [
           { name: 'Mole', prompt: 'Mole prompt' },
@@ -185,7 +201,7 @@ describe('US-2.1 - US-2.8: Gemini Integration & 5-Step Pipeline Orchestration', 
         ],
         interactionId: 'mock_overzealous_characters',
       }),
-    };
+    });
 
     const cappingOrchestrator = new PipelineOrchestrator(store, mutex, overzealousGemini);
     const result = await cappingOrchestrator.executeStep(project.id, 'CHARACTERS');
@@ -201,8 +217,7 @@ describe('US-2.1 - US-2.8: Gemini Integration & 5-Step Pipeline Orchestration', 
     await orchestrator.executeStep(project.id, 'CHARACTERS');
 
     // Custom adapter returning 3 chapters
-    const overzealousGemini: IGeminiService = {
-      ...mockGemini,
+    const overzealousGemini = withOverride({
       generateChapters: async () => ({
         chapters: [
           { name: 'Chapter 1: The River', prompt: 'River scene' },
@@ -211,7 +226,7 @@ describe('US-2.1 - US-2.8: Gemini Integration & 5-Step Pipeline Orchestration', 
         ],
         interactionId: 'mock_overzealous_chapters',
       }),
-    };
+    });
 
     const cappingOrchestrator = new PipelineOrchestrator(store, mutex, overzealousGemini);
     const result = await cappingOrchestrator.executeStep(project.id, 'CHAPTERS');
@@ -248,12 +263,11 @@ describe('US-2.1 - US-2.8: Gemini Integration & 5-Step Pipeline Orchestration', 
     await orchestrator.executeStep(project.id, 'STYLE');
 
     // Failing Gemini adapter on Step 2
-    const failingGemini: IGeminiService = {
-      ...mockGemini,
+    const failingGemini = withOverride({
       generateCharacters: async () => {
         throw new Error('Gemini Quota Exceeded (RESOURCE_EXHAUSTED)');
       },
-    };
+    });
 
     const failingOrchestrator = new PipelineOrchestrator(store, mutex, failingGemini);
 
