@@ -35,16 +35,16 @@
 - [x] Static image asset streaming endpoint (`GET /api/projects/:id/assets/:filename`)
 
 ## Phase 4: Frontend UI / UX (Gradion Design System)
-- [ ] Configure Tailwind CSS with Gradion tokens (`--grad-orange`, `--grad-ink`, radii, fonts) and `lucide-react`
-- [ ] Implement Hash Router (`#/`, `#/projects`, `#/projects/new`, `#/projects/:id`)
-- [ ] Build Identity / Auth View (`frontend/src/pages/AuthPage.tsx`)
-- [ ] Build Project Dashboard with status badges & 5-segment mini progress bar (`frontend/src/pages/ProjectListPage.tsx`)
-- [ ] Build New Project Ingestion View with `.txt` dropzone + direct text paste area (`frontend/src/pages/NewProjectPage.tsx`)
-- [ ] Build Project Workspace View with 5-step horizontal Stepper and sidebar (`frontend/src/pages/ProjectDetailPage.tsx`)
-- [ ] Build Character Cards (3:4 ratio) & Chapter Cards (16:9 ratio) with sequential visual reveals
-- [ ] Build Book Modal reader (`frontend/src/components/BookModal.tsx`) with Escape key handling
-- [ ] Build Loading spinner, In-Progress captions, and Error/Retry alert banners
-- [ ] Frontend component tests (`frontend/src/__tests__/`) with React Testing Library
+- [x] Configure Tailwind CSS with Gradion tokens (`--grad-orange`, `--grad-ink`, radii, fonts) and `lucide-react`
+- [x] Implement HTML5 History API Router (`/login`, `/projects`, `/projects/new`, `/projects/:id`)
+- [x] Build Identity / Auth View (`frontend/src/pages/AuthPage.tsx`)
+- [x] Build Project Dashboard with status badges & 5-segment mini progress bar (`frontend/src/pages/ProjectListPage.tsx`)
+- [x] Build New Project Ingestion View with `.txt` dropzone + direct text paste area (`frontend/src/pages/NewProjectPage.tsx`)
+- [x] Build Project Workspace View with 5-step horizontal Stepper and sidebar (`frontend/src/pages/ProjectDetailPage.tsx`)
+- [x] Build Character Cards (3:4 ratio) & Chapter Cards (16:9 ratio) with sequential visual reveals
+- [x] Build Book Modal reader (`frontend/src/components/BookModal.tsx`) with Escape key handling
+- [x] Build Loading spinner, In-Progress captions, and Error/Retry alert banners
+- [x] Frontend component tests (`frontend/src/__tests__/`) with React Testing Library
 
 ## Phase 5: Verification, Documentation & Final Deliverables
 - [ ] Execute full end-to-end user acceptance walkthrough

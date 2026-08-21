@@ -252,7 +252,137 @@ graph TD
 
 ---
 
-## 6. Data Schema Definitions
+## 6. Project Workspace Business Rules (`BRD-PROJ-DETAIL-01`)
+
+### 6.1 Scope & Route Guard
+
+| Rule ID | Condition | System Response |
+| :--- | :--- | :--- |
+| **BR-PD-AUTH-01** | User visits `/projects/:id` without a stored session. | Route guard redirects to `/login`. |
+| **BR-PD-LOAD-01** | Project fetch in flight on initial mount. | Centered spinner with *"Loading Illustration Studio Workspace..."* replaces the page content until the fetch settles. |
+| **BR-PD-OWNER-01** | Authenticated user requests a project owned by a different user. | Backend returns `403 Forbidden`. Frontend shows "Project not found" + "Return to Projects" link (frontend does not distinguish 403 from 404). |
+| **BR-PD-404-01** | Project ID does not exist in storage. | Backend returns `404 Not Found`. Frontend shows "Project not found" + "Return to Projects" link. |
+| **BR-PD-FETCH-ERR-01** | `GET /api/projects/:id` fails with a network error or non-403/404 status (e.g. `500`) on initial load. | Frontend shows a distinct "Couldn't load this project" state with the server/network error message and a **"Retry"** button (re-runs the fetch) — kept separate from the 403/404 "Project not found" state above. |
+
+**Note (`BR-PD-STYLE-CARD-01`):** The left sidebar's "Book text" card is always rendered; the "Art style" card only renders once `project.style` is set (i.e., after the `STYLE` step completes).
+
+---
+
+### 6.2 5-Step Stepper Component Rules
+
+The Stepper renders 5 milestone nodes (`Style`, `Characters`, `Portraits`, `Chapters`, `Illustrations`) connected by a continuous horizontal rail track.
+
+| Rule ID | Condition | Badge State | Rail Segment State |
+| :--- | :--- | :--- | :--- |
+| **BR-PD-STEP-01** | Step is before `currentStepNum` | ✅ Done — filled orange, white checkmark | Segment after this node fills **solid orange** |
+| **BR-PD-STEP-02** | Step equals `currentStepNum` | 🟠 Current — outlined orange, step number | Segment after this node shows **faint grey rail** |
+| **BR-PD-STEP-03** | Step is after `currentStepNum` | ⬜ Pending — muted background, step number | Segment after this node shows **faint grey rail** |
+| **BR-PD-STEP-04** | `stepState === 'RUNNING'` for this step's node | Adds an **amber pulse ring** around the active badge | — |
+
+`currentStepNum` mapping:
+
+| `project.status` | Current Step # |
+| :--- | :---: |
+| `CREATED` | 1 |
+| `STYLE_SET` | 2 |
+| `CHARACTERS_GENERATED` | 3 |
+| `PORTRAITS_GENERATED` | 4 |
+| `CHAPTERS_GENERATED` | 5 |
+| `DONE` | 6 (all done) |
+
+---
+
+### 6.3 Step Action Command Card Rules
+
+The action card is rendered **at the bottom of the artwork column** and disappears entirely when `project.status === 'DONE'`.
+
+#### Step-Specific Action Panels
+
+| Rule ID | Visible When | UI Elements |
+| :--- | :--- | :--- |
+| **BR-PD-ACT-01** | `nextStepKey === 'STYLE'` | Optional custom style textarea + **"Set Art Style"** button |
+| **BR-PD-ACT-02** | `nextStepKey === 'CHARACTERS'` | Info copy + **"Extract Characters"** button |
+| **BR-PD-ACT-03** | `nextStepKey === 'PORTRAITS'` | Info copy + **"Generate Portraits"** button |
+| **BR-PD-ACT-04** | `nextStepKey === 'CHAPTERS'` | Info copy + **"Extract Chapter Scene"** button |
+| **BR-PD-ACT-05** | `nextStepKey === 'ILLUSTRATIONS'` | Info copy + **"Generate Illustrations"** button |
+| **BR-PD-ACT-06** | `project.status === 'DONE'` | Action card is **completely hidden** — artwork takes center stage |
+
+#### In-Flight Loading State (`stepState === 'RUNNING'` or `executing === true`)
+
+| Rule ID | Behavior |
+| :--- | :--- |
+| **BR-PD-RUN-01** | Action button immediately **disables** on click to prevent double-submission. |
+| **BR-PD-RUN-02** | A centered orange spinner (`Loader2 animate-spin`) replaces the action panel. |
+| **BR-PD-RUN-03** | A **Figma-style vertical sliding ticker** cycles contextual micro-progress messages every 2.8 s, sliding each new message up from below (`slideUpIn` keyframe, 1.0s spring easing). |
+| **BR-PD-RUN-04** | The page **polls `GET /api/projects/:id` every 1.5 seconds** while `stepState === 'RUNNING'`. Polling stops when `stepState` transitions to `IDLE` or `FAILED`. |
+| **BR-PD-RUN-05** | No Status Pill is rendered in the page header on this view. Running-step progress is conveyed solely by the Stepper (§6.2), which already indicates the active step via its own pulse ring (`BR-PD-STEP-04`); the Status Pill is exclusive to the Projects Dashboard (§4.4), where the Stepper isn't visible. |
+
+#### Micro-Progress Message Sequences (per step)
+
+| Step | Messages (cycling) |
+| :--- | :--- |
+| `STYLE` | Analyzing narrative tone and themes… → Extracting period lighting and color palette… → Synthesizing cohesive artistic directives… → Finalizing book art style… |
+| `CHARACTERS` | Scanning book text for key adult characters… → Extracting physical traits, age, and clothing… → Drafting visual portrait directives… → Finalizing character profiles… |
+| `PORTRAITS` | Preparing canvas and mixing palette… → Applying base contours and brushwork… → Painting character features and atmospheric lighting… → Refining delicate textures and linework… → Finalizing high-fidelity portrait… |
+| `CHAPTERS` | Analyzing chapters and dramatic narrative arc… → Selecting iconic chapter scene for illustration… → Ensuring character continuity and scene setting… → Finalizing chapter scene composition… |
+| `ILLUSTRATIONS` | Composing 16:9 full-bleed scenic layout… → Placing characters with consistent lighting… → Rendering environmental textures and watercolor depth… → Polishing fine artistic brushwork… → Assembling final illustrated edition… |
+
+---
+
+### 6.4 Artwork Card Display Rules
+
+#### Character Cards (`CharacterEntity`)
+
+| Rule ID | Condition | Behavior |
+| :--- | :--- | :--- |
+| **BR-PD-CHAR-01** | `portraitReady === false` | Renders a **3:4 aspect ratio warm linen canvas** with a large literary monogram (first initial, stripped of articles/titles) and a subtle amber inset glow when `isGenerating`. |
+| **BR-PD-CHAR-02** | `portraitReady === true` | Canvas transitions to display the generated portrait image from `/api/projects/:id/assets/:characterId_portrait.png`. |
+| **BR-PD-CHAR-03** | Server cap | Exactly **max 2 adult characters** are extracted and displayed (server-enforced). |
+| **BR-PD-CHAR-04** | Sequential reveal | Portraits are persisted to the store individually as each completes, allowing progressive card-by-card reveal during Step 3. |
+| **BR-PD-CHAR-05** | Portrait image fails to load (`onError`) despite `portraitReady === true` | Falls back to the placeholder canvas (monogram) rather than showing a broken image icon. |
+
+#### Chapter Scene Cards (`ChapterEntity`)
+
+| Rule ID | Condition | Behavior |
+| :--- | :--- | :--- |
+| **BR-PD-CHAP-01** | `illustrationReady === false` | Renders a **16:9 aspect ratio warm linen canvas** with a Roman numeral or chapter initial watermark and amber glow when `isGenerating`. |
+| **BR-PD-CHAP-02** | `illustrationReady === true` | Canvas transitions to display the illustration from `/api/projects/:id/assets/:chapterId_illustration.png`. |
+| **BR-PD-CHAP-03** | Server cap | Exactly **max 1 chapter scene** is extracted and displayed (server-enforced). |
+| **BR-PD-CHAP-04** | Illustration image fails to load (`onError`) despite `illustrationReady === true` | Falls back to the placeholder canvas (watermark) rather than showing a broken image icon. |
+
+---
+
+### 6.5 Smooth Scroll Transition Rules
+
+| Rule ID | Trigger | Scroll Behavior |
+| :--- | :--- | :--- |
+| **BR-PD-SCROLL-01** | `status` transitions to `CHARACTERS_GENERATED` | Smooth-scrolls to the Character Cards section (300ms delay) so newly extracted characters come into view. |
+| **BR-PD-SCROLL-02** | `status` transitions to `CHAPTERS_GENERATED` | Smooth-scrolls to the Chapter Scene Card section (300ms delay). |
+| **BR-PD-SCROLL-03** | `status` transitions to `DONE` | **No scroll.** User stays in place to enjoy the completed chapter illustration. |
+
+---
+
+### 6.6 Full Book Manuscript Modal Reader Rules
+
+| Rule ID | Behavior |
+| :--- | :--- |
+| **BR-PD-MODAL-01** | A **"Read full text →"** link is always visible in the manuscript sidebar. |
+| **BR-PD-MODAL-02** | Clicking it opens a full-page modal overlay displaying the complete manuscript text with the book title. |
+| **BR-PD-MODAL-03** | Pressing `Escape`, clicking the **"Close"** button, or clicking the backdrop outside the dialog dismisses the modal. |
+
+---
+
+### 6.7 Error Boundary & Stranded Recovery Rules
+
+| Rule ID | Condition | UI Response |
+| :--- | :--- | :--- |
+| **BR-PD-ERR-01** | `stepState === 'FAILED'` and `lastError` is present. | Red error banner displays the failure message with a **"Retry Step"** button that re-executes the failed step key (hidden while a step is running). |
+| **BR-PD-ERR-02** | `stepState === 'RUNNING'` and `Date.now() - stepStartedAt > 60000`. | Amber warning banner alerts the user the step appears stuck, with a **"Recover Project"** button that calls `POST /api/projects/:id/recover`. |
+| **BR-PD-ERR-03** | Recovery success. | `project` state updates to reset `stepState` to `IDLE`; error banner clears; action panel becomes actionable again. |
+
+---
+
+## 7. Data Schema Definitions
 
 ```typescript
 export interface User {

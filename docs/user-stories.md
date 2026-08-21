@@ -35,9 +35,17 @@ This document records the user stories, personas, and formal BDD/Gherkin accepta
 | **US-3.5** | Phase 3 | Stranded Lock Recovery Endpoint (`POST /api/projects/:id/recover`) | Studio User | `P0 (Blocker)` |
 | **US-3.6** | Phase 3 | Public Static Image Asset Streaming (`GET /assets/:filename`) | Frontend Client | `P0 (Blocker)` |
 | **US-3.7** | Phase 3 | Automated REST API Server Integration Test Suite (Supertest) | QA Engineer | `P0 (Blocker)` |
-| **US-4.1** | Phase 4 | Gradion Design System Tokens & Responsive Stepper | Studio User | `P0 (Blocker)` |
-| **US-4.2** | Phase 4 | In-Flight Optimistic UI & Live Contextual Step Captions | Studio User | `P0 (Blocker)` |
-| **US-4.3** | Phase 4 | Full Book Modal Reader & Sequential Art Reveals | Studio User | `P1 (High)` |
+| **US-4.1** | Phase 4 | Gradion Design System Tokens, Typography & Layout Shell | UI/UX Designer | `P0 (Blocker)` |
+| **US-4.2** | Phase 4 | Lightweight Hash-Based Client Routing & Navigation | Frontend Engineer | `P0 (Blocker)` |
+| **US-4.3** | Phase 4 | Passwordless Identity Auth View & Local Session Persistence | Studio User | `P0 (Blocker)` |
+| **US-4.4** | Phase 4 | Project Dashboard with Status Pills & Milestone Mini-Bars | Studio User | `P0 (Blocker)` |
+| **US-4.5** | Phase 4 | Book Ingestion Dropzone & Manual Manuscript Textarea | Studio User | `P0 (Blocker)` |
+| **US-4.6** | Phase 4 | Interactive 5-Step Stepper & Workspace Command Panel | Studio User | `P0 (Blocker)` |
+| **US-4.7** | Phase 4 | In-Flight Optimistic UI & Live Contextual Step Captions | Studio User | `P0 (Blocker)` |
+| **US-4.8** | Phase 4 | Character & Chapter Art Cards with Sequential Reveals | Studio User | `P0 (Blocker)` |
+| **US-4.9** | Phase 4 | Full Book Manuscript Modal Reader | Studio User | `P1 (High)` |
+| **US-4.10** | Phase 4 | Error Boundaries, Retry Banners & Stranded Recovery UI | Studio User | `P0 (Blocker)` |
+| **US-4.11** | Phase 4 | Automated Frontend Component Test Suite (React Testing Library) | QA Engineer | `P0 (Blocker)` |
 | **US-5.1** | Phase 5 | Automated Verification & Real Test Output Capture | Evaluator / Lead | `P0 (Blocker)` |
 
 ---
@@ -652,46 +660,181 @@ Scenario: Executing REST API integration test suite
 
 ## Phase 4: Frontend UI / UX (Gradion Design System)
 
-### `US-4.1: Gradion Design System Tokens & Responsive Stepper`
-* **As a** Studio User,  
-* **I want** a polished user interface built with Gradion Design Tokens (`--grad-orange`, `--grad-ink`, typography scales) and an interactive 5-step Stepper,  
-* **So that** my progress across Style, Characters, Portraits, Chapters, and Illustrations is visually clear and delightful.
+### `US-4.1: Gradion Design System Tokens, Typography & Layout Shell`
+* **As a** UI/UX Designer & Studio User,  
+* **I want** the client styled using Gradion Design System tokens (`--grad-orange: #ff6239`, `--grad-ink: #272023`, warm paper surfaces, radius tokens, Noto Sans font) and a persistent top Navbar,  
+* **So that** the application delivers a bespoke, state-of-the-art editorial aesthetic faithful to `app-demo.html`.
 
 #### Acceptance Criteria (Gherkin)
 
 ```gherkin
-Scenario: Rendering Stepper visual milestone states
-  Given a project at status "CHARACTERS_GENERATED"
-  When the user views the Project Workspace
-  Then Step 1 (Style) and Step 2 (Characters) must render with checkmark badges
-  And Step 3 (Portraits) must render with an active pulsing ring badge
-  And Step 4 (Chapters) and Step 5 (Illustrations) must render as pending.
+Scenario: Applying Gradion Design tokens in Tailwind CSS
+  Given the frontend application initialized with "index.css" and "tailwind.config.js"
+  When inspecting rendered elements
+  Then the color palette must utilize Gradion tokens ("--grad-orange", "--grad-ink", "--grad-paper-1", "--grad-paper-2", "--grad-orange-subtle")
+  And the typography must render with "Noto Sans, sans-serif" font scales.
+
+Scenario: Persistent top navigation bar
+  Given an authenticated user "Alice Author"
+  When viewing any application page
+  Then the "Navbar" must render the Gradion logo badge, project directory link, and an avatar circle displaying the user initials "AA" with a sign-out button.
 ```
 
 ---
 
-### `US-4.2: In-Flight Optimistic UI & Live Contextual Step Captions`
-* **As a** Studio User,  
-* **I want** the action button to lock immediately upon click and display specific running captions (e.g. *"Generating character portraits..."*),  
-* **So that** I understand the exact AI operations happening under the hood.
+### `US-4.2: Standard HTML5 History API Client Routing & Navigation`
+* **As a** Frontend Engineer / Evaluator,  
+* **I want** standard HTML5 History API routing (`/login`, `/projects`, `/projects/new`, `/projects/:id`) via `BrowserRouter`/`pushState`,  
+* **So that** page transitions, browser back/forward navigation, and hard refreshes work cleanly with standard URLs.
 
 #### Acceptance Criteria (Gherkin)
 
 ```gherkin
-Scenario: Displaying in-flight feedback during step execution
-  Given a user clicks "Generate Portraits" in Step 3
-  When the request is in flight
+Scenario: Navigating via HTML5 History routes
+  Given the user on the dashboard page at "/projects"
+  When the user clicks "+ New project"
+  Then the browser URL must transition to "/projects/new" without a full page reload
+  And the New Project page must render immediately.
+
+Scenario: Refreshing deep project workspace route
+  Given the browser at "/projects/proj_123"
+  When the user triggers a browser hard refresh
+  Then the project workspace for "proj_123" must reload its active state without resulting in a 404 error.
+```
+
+---
+
+### `US-4.3: Passwordless Identity Auth View & Local Session Persistence`
+* **As a** Studio User,  
+* **I want** an Auth page (`/login`) with Name and Email inputs that persists my identity in `localStorage` and automatically attaches `x-user-email` to all API requests,  
+* **So that** my login session persists seamlessly across browser reloads.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Logging in with persistent session
+  Given a user visits "/login" and enters "Alice" and "alice@example.com"
+  When the user submits the login form
+  Then a request to "POST /api/auth/login" must succeed
+  And the user profile must be stored in "localStorage"
+  And the app must automatically redirect to "/projects".
+
+Scenario: Automatic redirection for unauthenticated users
+  Given no user is stored in "localStorage"
+  When the user navigates to "/projects" or "/projects/:id"
+  Then the app must redirect to "/login".
+```
+
+---
+
+### `US-4.4: Project Dashboard with Status Pills & Milestone Mini-Bars`
+* **As a** Studio User,  
+* **I want** a project dashboard (`#/projects`) displaying project cards with `StatusPill` badges (`Draft`, `In progress`, `Done`), 5-segment mini progress bars, character/chapter counts, and an empty state illustration,  
+* **So that** I have an immediate high-level overview of all my book illustration projects.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Displaying project cards with 5-segment progress bars
+  Given an authenticated user with 2 existing projects
+  When the user navigates to "#/projects"
+  Then each project card must display its title, last updated timestamp, character count, and a 5-segment progress bar reflecting its milestone index (0 to 5)
+  And clicking a project card must navigate to its workspace at "#/projects/:id".
+
+Scenario: Displaying empty state when zero projects exist
+  Given an authenticated user with no projects
+  When the user navigates to "#/projects"
+  Then an empty state card with an illustration and "Create your first book" button must be rendered.
+```
+
+---
+
+### `US-4.5: Book Ingestion Dropzone & Manual Manuscript Textarea`
+* **As a** Studio User,  
+* **I want** a dedicated creation view (`#/projects/new`) offering both a `.txt` drag-and-drop file dropzone and a direct text paste area,  
+* **So that** I can easily ingest book manuscripts into the studio.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Dragging and dropping a .txt file
+  Given the user is on the "#/projects/new" page
+  When the user drops a "chapter1.txt" file into the dropzone
+  Then the dropzone must display the file name and word count
+  And the text area must populate with the file contents.
+
+Scenario: Submitting a new project
+  Given the user has entered title "Alice in Wonderland" and manuscript text
+  When the user clicks "Create Project Workspace"
+  Then "POST /api/projects" must be called
+  And the app must immediately navigate to the created project workspace at "#/projects/:id".
+```
+
+---
+
+### `US-4.6: Interactive 5-Step Stepper & Workspace Command Panel`
+* **As a** Studio User,  
+* **I want** a 5-step horizontal Stepper in the project workspace with distinct badges (`Done` checkmark, `Current` orange ring, `Pending` number), a sticky manuscript sidebar, and an action command card,  
+* **So that** executing the pipeline is intuitive and clearly guided at every step.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Rendering Stepper milestone badges
+  Given a project with status "CHARACTERS_GENERATED" and stepState "IDLE"
+  When viewing the project workspace
+  Then Step 1 (Style) and Step 2 (Characters) must render with checkmark badges
+  And Step 3 (Portraits) must render with an active orange ring and number badge
+  And Step 4 and Step 5 must render with pending muted badges.
+
+Scenario: Step 1 custom style input
+  Given a project at status "CREATED"
+  When the user views the action panel for Step 1
+  Then an optional custom style text input must be present allowing the user to type "Gothic watercolor" before clicking "Set Art Style".
+```
+
+---
+
+### `US-4.7: In-Flight Optimistic UI & Live Contextual Step Captions`
+* **As a** Studio User,  
+* **I want** the action button to lock immediately upon click, display a spinner with contextual captions (e.g. *"Rendering character portraits..."*), and poll status every 1 second,  
+* **So that** I receive immediate visual feedback while AI models generate assets.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Triggering step execution with in-flight feedback
+  Given a user clicks "Generate Portraits" for Step 3
+  When the API request is in-flight
   Then the action button must immediately become disabled
-  And a spinner icon must appear alongside the caption "Generating character portrait artwork…"
+  And a spinner icon must appear alongside the caption "Rendering character portrait artwork with Nano Banana…"
   And the Status Pill must display "In progress" with a pulsing orange dot.
 ```
 
 ---
 
-### `US-4.3: Full Book Modal Reader & Sequential Art Reveals`
+### `US-4.8: Character & Chapter Art Cards with Sequential Reveals`
 * **As a** Studio User,  
-* **I want** to preview the full manuscript in an accessible modal reader and watch character portraits reveal sequentially,  
-* **So that** I have full narrative context and an engaging visual experience.
+* **I want** Character Cards (3:4 ratio) and Chapter Cards (16:9 ratio) that reveal generated artwork smoothly with placeholder spinners,  
+* **So that** visual assets are presented beautifully without layout shifts.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Rendering character cards before and after portrait generation
+  Given a project with 2 characters where portraits are not yet generated
+  When viewing the workspace
+  Then each character card must render in 3:4 aspect ratio with character name, visual prompt, and a placeholder canvas.
+  When Step 3 completes
+  Then each card must smoothly transition to display its generated portrait image from "/api/projects/:id/assets/:filename".
+```
+
+---
+
+### `US-4.9: Full Book Manuscript Modal Reader`
+* **As a** Studio User,  
+* **I want** to click "Read full text →" to open an accessible full-page book reader modal with keyboard Escape support,  
+* **So that** I can review the original literary source text at any time without leaving my workspace.
 
 #### Acceptance Criteria (Gherkin)
 
@@ -699,13 +842,47 @@ Scenario: Displaying in-flight feedback during step execution
 Scenario: Opening and closing full book modal reader
   Given the user is on the Project Workspace page
   When the user clicks "Read full text →"
-  Then the full book modal must open displaying the manuscript
+  Then a modal overlay must appear displaying the full manuscript text with book title
   And pressing the "Escape" key or clicking the "Close" button must close the modal.
+```
 
-Scenario: Sequential portrait reveals
-  Given Step 3 (Portraits) completes image generation for 2 characters
-  When the project state is refreshed
-  Then each character card must render its corresponding portrait image smoothly without layout shifts.
+---
+
+### `US-4.10: Error Boundaries, Retry Banners & Stranded Recovery UI`
+* **As a** Studio User,  
+* **I want** error alert banners with explicit "Retry Step" buttons on failure, and a "Recover Project" button when a step is stranded past 60 seconds,  
+* **So that** I can easily recover from network glitches or API rate limits.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Displaying retry banner on step failure
+  Given a project with "stepState = FAILED" and "lastError" present
+  When the user views the workspace
+  Then an error banner must display the failure message and a "Retry Step" button
+  And clicking "Retry Step" must re-trigger the failed step.
+
+Scenario: Displaying recovery button on stranded lock
+  Given a project in "RUNNING" state for longer than 60 seconds
+  When the user views the workspace
+  Then a banner must alert the user that the step appears stuck and provide a "Recover Project" button
+  And clicking "Recover Project" must call "POST /api/projects/:id/recover".
+```
+
+---
+
+### `US-4.11: Automated Frontend Component Test Suite (React Testing Library)`
+* **As a** QA Engineer,  
+* **I want** automated unit tests for `Stepper`, `StatusPill`, `BookModal`, and `CharacterCard`,  
+* **So that** frontend UI component contracts and accessibility are verified via `./test.sh`.
+
+#### Acceptance Criteria (Gherkin)
+
+```gherkin
+Scenario: Executing frontend component test suite
+  Given the Vitest test runner with jsdom environment
+  When executing "frontend/src/__tests__/"
+  Then component tests verifying Stepper milestones, StatusPill variants, modal keyboard closing, and card rendering must pass with 0 failures.
 ```
 
 ---

@@ -55,8 +55,20 @@ This document records the incremental progress, feature demonstrations, and veri
 
 ---
 
-## Milestone 4: Frontend UI / UX Polish (Phase 4)
-*(Pending Phase 4 execution)*
+## Milestone 4: Frontend UI / UX (Gradion Design System) (Phase 4 Complete)
+
+### Implemented & Verified Stories
+* **`US-4.1`**: Ported all Gradion Design System tokens (`--grad-orange`, `--grad-ink`, paper surfaces, font scales, radius tokens) from `app-demo.html` into `frontend/tailwind.config.js` and `frontend/src/index.css`. Built `Navbar.tsx` with user initials avatar.
+* **`US-4.2`**: Implemented HTML5 History API routing (`/login`, `/projects`, `/projects/new`, `/projects/:id`) in `frontend/src/router.tsx` and `frontend/src/App.tsx`.
+* **`US-4.3`**: Implemented passwordless `AuthPage.tsx` and `AuthContext.tsx` with `localStorage` session persistence and automatic `x-user-email` injection via `frontend/src/api.ts`.
+* **`US-4.4`**: Implemented `ProjectListPage.tsx` with `StatusPill.tsx`, 5-segment `ProgressBar.tsx`, project metadata, and empty state illustrations.
+* **`US-4.5`**: Implemented `NewProjectPage.tsx` with `.txt` drag-and-drop dropzone, live word/character counters, and sample text loader.
+* **`US-4.6`**: Implemented `Stepper.tsx` (Done/Current/Pending badges) and `ProjectDetailPage.tsx` workspace command center.
+* **`US-4.7`**: Implemented in-flight optimistic UI with immediate button locking, spinner feedback, live contextual running captions, and auto-polling.
+* **`US-4.8`**: Implemented `CharacterCard.tsx` (3:4 ratio) and `ChapterCard.tsx` (16:9 ratio) with smooth image reveals and placeholder states.
+* **`US-4.9`**: Implemented `BookModal.tsx` accessible manuscript reader with Escape key listener and backdrop click-to-close.
+* **`US-4.10`**: Implemented `ErrorBanner.tsx` with "Retry Step" action and stranded lock "Recover Lock" button.
+* **`US-4.11`**: Implemented comprehensive React Testing Library component tests in `frontend/src/__tests__/` (12 tests). Verified via `./test.sh` passing with 100% success (49/49 tests total).
 
 ---
 
