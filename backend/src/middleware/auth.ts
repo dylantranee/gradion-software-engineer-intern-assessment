@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { jsonStore } from '../storage/jsonStore.js';
-import { User } from '../../shared/types.js';
+import { User } from '../../../shared/types.js';
 
 export interface AuthenticatedRequest extends Request {
   user?: User;

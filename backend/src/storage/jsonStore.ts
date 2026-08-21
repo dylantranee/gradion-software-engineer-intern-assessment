@@ -8,7 +8,7 @@ import {
   ProjectSummary,
   StepKey,
   PipelineStatus,
-} from '../../shared/types.js';
+} from '../../../shared/types.js';
 
 export const STUCK_TIMEOUT_MS = 60_000; // 60 seconds stranded lock timeout
 

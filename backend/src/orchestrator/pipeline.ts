@@ -8,7 +8,7 @@ import {
   StepKey,
   CharacterEntity,
   ChapterEntity,
-} from '../../shared/types.js';
+} from '../../../shared/types.js';
 
 export class PipelineOrchestrator {
   private store: JsonStore;

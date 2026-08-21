@@ -3,7 +3,7 @@ import { jsonStore } from '../storage/jsonStore.js';
 import { pipelineMutex, ConflictError } from '../orchestrator/mutex.js';
 import { pipelineOrchestrator } from '../orchestrator/pipeline.js';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth.js';
-import { StepKey } from '../../shared/types.js';
+import { StepKey } from '../../../shared/types.js';
 
 export const pipelineRouter = Router();
 
