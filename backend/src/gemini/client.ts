@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { config } from '../config.js';
-import { IGeminiService, CharacterGenerated, ChapterGenerated, promptBuilders } from './types.js';
+import { IGeminiService, CharacterGenerated, ChapterGenerated, promptBuilders, sanitizeStyleText } from './types.js';
 import { mockGeminiAdapter } from './mockAdapter.js';
 
 /**
@@ -85,7 +85,9 @@ export class GeminiClient implements IGeminiService {
       });
 
       return {
-        style: interaction.output_text?.trim() || 'Classic vintage watercolor storybook style',
+        style: interaction.output_text
+          ? sanitizeStyleText(interaction.output_text)
+          : 'Classic vintage watercolor storybook style',
         interactionId: interaction.id,
       };
     } catch (err) {

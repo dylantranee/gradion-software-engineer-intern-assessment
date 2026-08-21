@@ -137,3 +137,23 @@ ${NEGATIVE_PROMPT_INSTRUCTIONS}
     };
   },
 };
+
+/**
+ * The STYLE step is the one free-form (non-JSON-schema) text call, and
+ * despite the prompt asking for "only that directive," Gemini sometimes
+ * prefixes its answer with a markdown label like "**Style Prompt:**" and/or
+ * wraps phrases in `**bold**`. `project.style` is rendered as plain text in
+ * the frontend (no markdown parser), so this would otherwise show up as
+ * literal asterisks next to the UI's own "Art style" heading. Same
+ * never-trust-the-model principle as the character/chapter caps — applied
+ * after the call, not just prompted for.
+ */
+export function sanitizeStyleText(text: string): string {
+  return text
+    // Drop a leading label like "**Style Prompt:**" whether it's on its own
+    // line or immediately precedes the content on the same line.
+    .replace(/^\s*\*{0,2}[A-Za-z][A-Za-z /-]{1,40}:\*{0,2}\s+/, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/(?<!\w)\*(.+?)\*(?!\w)/g, '$1')
+    .trim();
+}
