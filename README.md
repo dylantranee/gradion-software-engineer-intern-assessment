@@ -44,27 +44,30 @@ STORAGE_DIR=./data
 ./test.sh
 ```
 
+### Why no `docker-compose.yml`
+Persistence is local JSON files on disk (see `docs/DECISIONS.md`, Decision 2) — there's no database or other service to orchestrate. `./start.sh` / `./test.sh` are the "one command" entry points; Docker would add a layer with nothing underneath it to isolate.
+
 ---
 
 ## Complete Project Documentation (`/docs`)
 
 All planning documents, decisions, user stories, and test logs are located in `/docs`:
 
-1. **[User Stories & Acceptance Criteria](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/user-stories.md)** (`docs/user-stories.md`)
+1. **[User Stories & Acceptance Criteria](docs/user-stories.md)** (`docs/user-stories.md`)
    * Comprehensive Agile backlog across all phases with formal Given-When-Then Gherkin acceptance criteria (`US-0.1` to `US-5.1`).
-2. **[Architecture Decisions & AI Copilot Overrides](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/DECISIONS.md)** (`docs/DECISIONS.md`)
+2. **[Architecture Decisions & AI Copilot Overrides](docs/DECISIONS.md)** (`docs/DECISIONS.md`)
    * 10 architectural decisions with trade-offs, **7 explicit AI overrides** (including the Next.js/Postgres/client-side-locking/Imagen-3 rejections, replacing per-step Gemini calls with the notebook's File-API + Interactions-API chaining, and a live-discovered model-retirement fix), and "One More Day" roadmap.
-3. **[Master Implementation Plan & PRD](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/plan.md)** (`docs/plan.md`)
+3. **[Master Implementation Plan & PRD](docs/plan.md)** (`docs/plan.md`)
    * 14-row architectural decision matrix, 5-step pipeline mechanics, negative prompt rules, and state machine specifications.
-4. **[System Architecture](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/architecture.md)** (`docs/architecture.md`)
+4. **[System Architecture](docs/architecture.md)** (`docs/architecture.md`)
    * Architecture diagram, REST endpoint specifications, and TypeScript data models.
-5. **[Task Tracker & Checklist](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/tasks.md)** (`docs/tasks.md`)
+5. **[Task Tracker & Checklist](docs/tasks.md)** (`docs/tasks.md`)
    * Phase-by-phase implementation checklist.
-6. **[Testing Strategy & Execution Outputs](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/TESTING.md)** (`docs/TESTING.md`)
+6. **[Testing Strategy & Execution Outputs](docs/TESTING.md)** (`docs/TESTING.md`)
    * Testing philosophy, ordering invariants, caps enforcement, and raw test outputs.
-7. **[Walkthrough & Verification Journal](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/docs/walkthrough.md)** (`docs/walkthrough.md`)
+7. **[Walkthrough & Verification Journal](docs/walkthrough.md)** (`docs/walkthrough.md`)
    * Incremental verification logs across development milestones.
-8. **[Native Agent Guidelines](file:///Users/dylantran/Documents/dev/gradion-software-engineer-intern-assessment/AGENTS.md)** (`AGENTS.md`)
+8. **[Native Agent Guidelines](AGENTS.md)** (`AGENTS.md`)
    * Antigravity operational rules, caps constraints, and logging protocols.
 
 ---
