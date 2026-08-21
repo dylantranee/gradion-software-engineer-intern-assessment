@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -95,6 +95,38 @@ describe('US-2.1 - US-2.8: Gemini Integration & 5-Step Pipeline Orchestration', 
     expect(result.status).toBe('STYLE_SET');
     expect(result.style).toContain('Studio Ghibli Anime with lush greenery');
     expect(result.style).toContain('Enriched Art Style');
+  });
+
+  it('BR-PD-CHAR-04: persists each character portrait to the store individually as it completes, before the next one starts generating', async () => {
+    const user = await store.getOrCreateUser('Author', 'author@test.com');
+    const project = await store.createProject(
+      user.id,
+      'The Wind in the Willows',
+      'The Mole had been working very hard all the morning, spring-cleaning his little home...'
+    );
+    await orchestrator.executeStep(project.id, 'STYLE');
+    await orchestrator.executeStep(project.id, 'CHARACTERS');
+
+    const original = mockGemini.generatePortrait.bind(mockGemini);
+    const char0ReadyAtCallTime: boolean[] = [];
+    const spy = vi
+      .spyOn(mockGemini, 'generatePortrait')
+      .mockImplementation(async (name: string, prompt: string, style: string) => {
+        // Snapshot the store's own persisted state right as each portrait generation
+        // starts — proving character 0's portrait was already saved to disk before
+        // character 1's generation began, not batched together at the end of the step.
+        const snapshot = await store.getProject(project.id);
+        char0ReadyAtCallTime.push(snapshot!.characters[0].portraitReady);
+        return original(name, prompt, style);
+      });
+
+    await orchestrator.executeStep(project.id, 'PORTRAITS');
+
+    expect(char0ReadyAtCallTime).toHaveLength(2);
+    expect(char0ReadyAtCallTime[0]).toBe(false); // char 0's own portrait isn't ready when its generation starts
+    expect(char0ReadyAtCallTime[1]).toBe(true); // already persisted by the time char 1's generation starts
+
+    spy.mockRestore();
   });
 
   it('US-2.4: enforces hard cap of max 2 adult characters when LLM returns more', async () => {

@@ -134,9 +134,10 @@ export class PipelineOrchestrator {
 
   // --- Step 3: Portraits (Nano Banana) ---
   private async runStepPortraits(project: Project): Promise<Project> {
-    const updatedCharacters: CharacterEntity[] = [];
+    const updatedCharacters: CharacterEntity[] = [...project.characters];
 
-    for (const char of project.characters) {
+    for (let i = 0; i < updatedCharacters.length; i++) {
+      const char = updatedCharacters[i];
       const imageBuffer = await this.gemini.generatePortrait(
         char.name,
         char.prompt,
@@ -146,11 +147,17 @@ export class PipelineOrchestrator {
       const filename = `${char.id}_portrait.png`;
       const relativePath = await this.store.saveProjectAsset(project.id, filename, imageBuffer);
 
-      updatedCharacters.push({
+      updatedCharacters[i] = {
         ...char,
         portraitPath: relativePath,
         portraitReady: true,
-      });
+      };
+
+      // Persist progressive per-item landing immediately so frontend polling displays it in real time
+      await this.store.updateProject(project.id, (p) => ({
+        ...p,
+        characters: [...updatedCharacters],
+      }));
     }
 
     return this.store.completeStep(project.id, 'PORTRAITS', 'PORTRAITS_GENERATED', {
