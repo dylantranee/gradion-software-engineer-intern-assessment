@@ -54,7 +54,7 @@ Environment config lives in root `.env` (copied from `.env.example`): `GEMINI_AP
 ## Docs
 
 `/docs` holds the full planning trail — check these before making architectural changes, since several decisions were deliberate rejections of "more standard" choices:
-- `docs/DECISIONS.md` — 10 architectural decisions with trade-offs, including explicit AI-assistant overrides (e.g. Next.js rejected, Postgres rejected, client-side locking rejected, Imagen 3 corrected to the Nano Banana image model).
+- `docs/DECISIONS.md` — 5 decisions with trade-offs, each carrying its own AI-assistant override (Next.js rejected, Postgres rejected, client-side locking rejected, Imagen 3 corrected to Nano Banana, a retired Gemini model caught live, and the Gemini client rebuilt around conversation chaining instead of resending the book per step).
 - `docs/plan.md` — implementation plan, pipeline mechanics, negative-prompt rules, state machine spec.
 - `docs/architecture.md` — architecture diagram, REST endpoint list, TS data models.
 - `docs/user-stories.md` — Gherkin acceptance criteria (`US-0.1`…`US-5.1`).

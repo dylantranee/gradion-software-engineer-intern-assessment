@@ -45,7 +45,7 @@ STORAGE_DIR=./data
 ```
 
 ### Why no `docker-compose.yml`
-Persistence is local JSON files on disk (see `docs/DECISIONS.md`, Decision 2) — there's no database or other service to orchestrate. `./start.sh` / `./test.sh` are the "one command" entry points; Docker would add a layer with nothing underneath it to isolate.
+Persistence is local JSON files on disk (see `docs/DECISIONS.md`, "Stack & storage") — there's no database or other service to orchestrate. `./start.sh` / `./test.sh` are the "one command" entry points; Docker would add a layer with nothing underneath it to isolate.
 
 ---
 
@@ -56,7 +56,7 @@ All planning documents, decisions, user stories, and test logs are located in `/
 1. **[User Stories & Acceptance Criteria](docs/user-stories.md)** (`docs/user-stories.md`)
    * Comprehensive Agile backlog across all phases with formal Given-When-Then Gherkin acceptance criteria (`US-0.1` to `US-5.1`).
 2. **[Architecture Decisions & AI Copilot Overrides](docs/DECISIONS.md)** (`docs/DECISIONS.md`)
-   * 10 architectural decisions with trade-offs, **7 explicit AI overrides** (including the Next.js/Postgres/client-side-locking/Imagen-3 rejections, replacing per-step Gemini calls with the notebook's File-API + Interactions-API chaining, and a live-discovered model-retirement fix), and "One More Day" roadmap.
+   * 5 decisions with trade-offs, each carrying its own AI override (Next.js/Postgres/client-side-locking/Imagen-3 rejections, a live-discovered model retirement, and replacing per-step Gemini calls with the notebook's File-API + Interactions-API chaining), plus the "One More Day" answer.
 3. **[Master Implementation Plan & PRD](docs/plan.md)** (`docs/plan.md`)
    * 14-row architectural decision matrix, 5-step pipeline mechanics, negative prompt rules, and state machine specifications.
 4. **[System Architecture](docs/architecture.md)** (`docs/architecture.md`)
